@@ -1,4 +1,5 @@
-# Political Watch Agent
+# X-AI-Hackathon
+Agent IA de veille politique personnalisée qui suit les sujets qui vous intéressent et synthétise l’actualité pour vous tenir informé.
 
 Agent IA de veille politique personnalisée, conçu pour un hackathon de trois jours par une équipe de trois personnes. Le projet vise à aider chaque utilisateur à suivre les sujets politiques qui l’intéressent et à consulter des synthèses adaptées à ses besoins.
 
