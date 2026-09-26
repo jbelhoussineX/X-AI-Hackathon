@@ -1,0 +1,10 @@
+{
+  "document_id": "demo-consultation-transports",
+  "change_type": "unconfirmed",
+  "description": "Vérification impossible : la source est indisponible.",
+  "changes": [],
+  "evidence": [],
+  "limitations": [
+    "La récupération actuelle a échoué ; conserver l'ancien état et sa date de vérification réussie."
+  ]
+}

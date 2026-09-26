@@ -1,0 +1,21 @@
+{
+  "document_id": "demo-consultation-transports",
+  "change_type": "unchanged",
+  "description": "Aucune différence factuelle entre les deux contenus complets fournis.",
+  "changes": [],
+  "evidence": [
+    {
+      "version": "previous",
+      "source_url": "https://example.org/fictif/consultation-transports",
+      "retrieved_at": "2026-09-25T09:00:00Z",
+      "quote": "Consultation fictive sur l'accessibilité des transports. La consultation se termine le 10 octobre 2026."
+    },
+    {
+      "version": "current",
+      "source_url": "https://example.org/fictif/consultation-transports",
+      "retrieved_at": "2026-09-26T09:00:00Z",
+      "quote": "Consultation fictive sur l'accessibilité des transports. La consultation se termine le 10 octobre 2026."
+    }
+  ],
+  "limitations": []
+}
