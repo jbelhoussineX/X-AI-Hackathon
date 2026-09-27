@@ -42,7 +42,7 @@ Renseigner les valeurs nécessaires uniquement dans le fichier local `.env`.
 La [méthode de comparaison](methods/political_watch/README.md) définit le contrat d'échange avec Dust et les sorties attendues. Elle est validée par Pipelex ; les [quatre cas fictifs](tests/fixtures/political_watch/README.md) sont prêts pour les essais, qui n'ont pas encore été exécutés avec un modèle.
 
 Les contrôles Python et la fonction de raccordement sont dans `backend/`.
-Pour lancer les 22 tests locaux, sans API ni crédits, depuis la racine du dépôt :
+Pour lancer les 33 tests locaux, sans API ni crédits, depuis la racine du dépôt :
 
 ```bash
 python -m unittest discover -s tests -v
@@ -50,6 +50,14 @@ python -m unittest discover -s tests -v
 
 Python 3.11 ou ultérieur suffit, sans dépendance externe. Le client Dust, le client
 Pipelex, la persistance et l'interface ne sont pas encore raccordés.
+
+Le [raccordement local au format Dust](backend/dust/README.md) valide les réponses
+`citoyen_report` et prépare les demandes de comparaison en conservant les sources.
+Pour vérifier le rapport fictif fourni :
+
+```bash
+python -m backend.dust tests/fixtures/dust/report.json
+```
 
 ## Licence
 

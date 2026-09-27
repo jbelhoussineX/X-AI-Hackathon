@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.0",
+  "topic": "Accessibilité des transports",
+  "scope": "Exemple entièrement fictif, deux sources.",
+  "documents": [
+    {
+      "id": "dust-doc-1",
+      "title": "Consultation fictive",
+      "kind": "projet_de_loi",
+      "publication_date": null,
+      "summary": "Résumé généré : à ne pas utiliser comme texte source.",
+      "stage": null,
+      "stage_date": null,
+      "evidence": [
+        {
+          "purpose": "contenu",
+          "url": "https://example.org/fictif/texte",
+          "excerpt": "La consultation se termine le 20 octobre 2026.",
+          "location": "Article 1"
+        },
+        {
+          "purpose": "statut",
+          "url": "https://example.org/fictif/dossier",
+          "excerpt": "Le texte a été déposé.",
+          "location": null
+        }
+      ],
+      "uncertainties": [
+        "Date de publication non confirmée."
+      ]
+    }
+  ],
+  "contacts": [],
+  "limitations": [
+    "Exemple synthétique : aucune page consultée."
+  ]
+}
