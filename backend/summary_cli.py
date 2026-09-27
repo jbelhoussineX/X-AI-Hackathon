@@ -1,4 +1,4 @@
-"""Validate a Dust export offline, or explicitly synthesize it with Pipelex."""
+"""Validate a report export offline, or explicitly synthesize it with Pipelex."""
 import argparse
 import json
 from pathlib import Path
@@ -11,7 +11,7 @@ from backend.source_verification import verify_sources
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('report', type=Path, help='Rapport citoyen_report JSON brut de Dust')
+    parser.add_argument('report', type=Path, help='Rapport citoyen_report JSON brut')
     parser.add_argument('--topic', required=True, help='Sujet choisi par l’utilisateur')
     parser.add_argument('--run', action='store_true', help='Exécuter réellement Pipelex (consomme des crédits)')
     parser.add_argument('--output', type=Path, help='Nouveau fichier JSON de sortie, nécessaire avec --run')
@@ -35,7 +35,7 @@ def main(argv=None):
             return 1
         report = verification.report
         result = synthesize_report(args.topic, report, analyze_summary)
-        envelope = {'mode': 'dust', 'report': result, 'duration_seconds': monotonic() - started}
+        envelope = {'mode': 'pipelex', 'report': result, 'duration_seconds': monotonic() - started}
         # This is a service result, not a fabricated UI execution history.
         with args.output.open('x', encoding='utf-8') as stream:
             json.dump(envelope, stream, ensure_ascii=False, indent=2)

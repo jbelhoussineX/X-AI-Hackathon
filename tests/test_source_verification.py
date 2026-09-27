@@ -7,7 +7,6 @@ from unittest.mock import patch
 
 import httpx
 from backend.source_verification import allowed_url, verify_sources
-from backend.dust.client import DustResult
 from src.service import search
 
 
@@ -83,13 +82,8 @@ class SourceTests(unittest.TestCase):
         self.assertTrue(result.report['documents'][0]['uncertainties'])
         self.assertNotIn('do not expose', str(result.report))
 
-    def test_missing_source_blocks_pipelex_without_hiding_dust_report(self):
-        verification = self.verify(lambda _: httpx.Response(404))
+    def test_invalid_research_report_is_not_replaced_with_demo(self):
         with patch.dict(os.environ, {'ENABLE_PIPELEX_CALLS': 'true'}), \
-             patch('src.service.research', return_value=DustResult(self.report, 'mock')), \
-             patch('src.service.verify_sources', return_value=verification), \
-             patch('src.service.analyze_summary') as analyzer:
-            result = search('Transports', '2026-01-01', '2026-12-31')
-        analyzer.assert_not_called()
-        self.assertEqual(len(result['report']['documents']), 1)
-        self.assertEqual(result['source_checks'][0]['status'], 'http_error')
+             patch('src.service.research', side_effect=ValueError('Source non confirmee')):
+            with self.assertRaises(ValueError):
+                search('Transports', '2026-01-01', '2026-12-31')

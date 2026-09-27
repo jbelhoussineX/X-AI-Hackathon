@@ -1,0 +1,21 @@
+{
+  "comment": "Written by /pipelex-integrate; regenerate after source changes.",
+  "generator": "pipelex-integrate",
+  "method": {
+    "files": [
+      "methods/political_search/main.mthds"
+    ]
+  },
+  "target": "python-pydantic",
+  "pipe": {
+    "pipe_ref": "political_search.find_sources",
+    "inputs": {
+      "request": "political_search.SearchRequest"
+    },
+    "output": "native.SearchResult"
+  },
+  "bundle_dir": "methods/political_search",
+  "sources": {
+    "methods/political_search/main.mthds": "435e6e554524b2d786b389935c3e9e1c51d66c5a6e6669a3f6e8c45242b1fdda"
+  }
+}

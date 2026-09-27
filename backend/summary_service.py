@@ -3,12 +3,12 @@ from copy import deepcopy
 import json
 
 from backend.comparison_validation import ContractError, _fields, _require, _text
-from backend.dust.adapter import validate_dust_report
+from backend.report_contract import validate_report
 
 
 def prepare_summary(topic: str, report: dict) -> dict:
     _text(topic)
-    validate_dust_report(report)
+    validate_report(report)
     _require(len(report['documents']) <= 4, 'Au plus quatre documents par synthèse.')
     documents = []
     for doc in report['documents']:
@@ -24,7 +24,7 @@ def prepare_summary(topic: str, report: dict) -> dict:
 
 
 def validate_summary(report: dict, output: dict) -> dict:
-    validate_dust_report(report)
+    validate_report(report)
     _fields(output, ('documents',))
     _require(isinstance(output['documents'], list), 'Liste de synthèses attendue.')
     source = {d['id']: d for d in report['documents']}
@@ -76,8 +76,8 @@ def synthesize_report(topic: str, report: dict, analyze) -> dict:
         doc['summary'] = '\n\n'.join(parts)
         doc['uncertainties'].extend(item['limitations'])
     original['limitations'].append(
-        'Synthèse reformulée par Pipelex à partir des extraits transmis par Dust ; '
+        'Synthèse reformulée par Pipelex à partir des extraits documentaires fournis ; '
         'le modèle ne fait aucune recherche ni vérification supplémentaire des pages. '
         'Les références contrôlées ne garantissent pas la justesse de l’interprétation.')
-    validate_dust_report(original)
+    validate_report(original)
     return original

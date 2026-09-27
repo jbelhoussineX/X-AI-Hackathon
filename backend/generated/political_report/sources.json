@@ -1,0 +1,21 @@
+{
+  "comment": "Written by /pipelex-integrate; regenerate after source changes.",
+  "generator": "pipelex-integrate",
+  "method": {
+    "files": [
+      "methods/political_report/main.mthds"
+    ]
+  },
+  "target": "python-pydantic",
+  "pipe": {
+    "pipe_ref": "political_report.build_report",
+    "inputs": {
+      "request": "political_report.ReportRequest"
+    },
+    "output": "political_report.Report"
+  },
+  "bundle_dir": "methods/political_report",
+  "sources": {
+    "methods/political_report/main.mthds": "1cab5bea74c086bdd7012087d38345db0d66ddd6533f889a856ad18f636ff2b1"
+  }
+}

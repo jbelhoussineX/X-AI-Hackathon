@@ -1,78 +1,49 @@
-# Contrôle des extraits Dust
+# Collecte et contrôle des sources
 
-`src.service.search` filtre les documents par période, puis appelle
-`verify_sources(report)` avant toute synthèse Pipelex. Aucun outil Dust à ajouter :
-ce contrôle s'exécute dans le backend Python après réception du rapport JSON.
-Il ne s'agit pas d'un connecteur à une API gouvernementale : ce sont des lectures
-HTTP des pages citées, sans clé gouvernementale.
+Le backend récupère des pages publiques indiquées par PipeSearch avant de demander
+le rapport Pipelex. Il s’agit de lectures HTTP de pages, pas encore d’un connecteur
+aux API gouvernementales. Aucune clé gouvernementale n’est nécessaire.
 
-Domaines acceptés en HTTPS, avec et sans `www` : `assemblee-nationale.fr`,
-`senat.fr`, `legifrance.gouv.fr`. Les autres domaines sont non confirmés, sans
-requête réseau. Les redirections sont vérifiées à chaque étape. Ajouter une
-nouvelle source nécessite une modification explicite de la liste `HOSTS`.
+Domaines HTTPS autorisés, avec et sans `www` : `assemblee-nationale.fr`, `senat.fr`,
+`legifrance.gouv.fr`. Les redirections sont contrôlées à chaque étape. Les autres
+domaines sont refusés sans requête. Les réponses et snippets du moteur ne sont
+jamais utilisés comme texte source.
 
-Le collecteur extrait le texte HTML (sans scripts, styles ni en-tête), lit du
-texte brut ou extrait la couche texte des PDF avec pypdf. Il recherche l'extrait exact, puis essaie en normalisant uniquement
-les espaces et la composition Unicode. Aucun mot, montant, date ou ponctuation
-n'est corrigé pour fabriquer une concordance. Une URL partagée est téléchargée
-une seule fois par recherche ; pas de cache persistant.
+Le corpus contient au plus six résultats, 15 000 caractères par source et 60 000
+au total. Une troncature est signalée au modèle et à l’utilisateur. Le contrôle
+porte exactement sur les caractères envoyés au modèle. Une citation portant sur
+une partie coupée est refusée. Les URL sont dédupliquées dans une recherche.
 
-Limites : huit URL sources au maximum, trois redirections par URL, 2 Mo de contenu
-décompressé par réponse, délais réseau bornés et budget temporel d'environ 30 s.
-Le budget est vérifié entre lectures ; une lecture réseau en cours peut le dépasser
-jusqu'à son timeout. Aucun contournement de captcha ou de restriction d'accès.
-Le rendu JavaScript et l'OCR ne sont pas pris en charge. Les PDF sans texte
-extractible, chiffrés ou invalides restent non confirmés. L'extraction PDF se fait
-dans un processus séparé arrêté après huit secondes au plus (ou le budget restant).
-Elle est limitée à 40 pages, 2 Mo de contenu décompressé par page avant extraction
-et 500 000 caractères de sortie. Ces seuils et le timeout ne constituent pas une
-limite dure de mémoire du processus pendant le décodage.
-Les pages sont conservées séparément : on ne fabrique pas de citation en
-concaténant la fin d'une page avec le début de la suivante. `pdf_page` indique le
-numéro physique de la page où un passage a été retrouvé, à partir de 1 ; ce n'est
-pas nécessairement le numéro imprimé. Une couche OCR déjà présente peut contenir
-des erreurs : le programme ne vérifie pas visuellement le PDF.
+Chaque téléchargement est limité à 2 Mo, trois redirections, huit secondes par
+requête et un budget de collecte de 30 secondes contrôlé entre lectures. Une lecture
+en cours peut dépasser ce budget jusqu’à son timeout. Pas de contournement des
+restrictions d’accès ni de rendu JavaScript.
 
-Chaque vérification expose URL initiale/finale, horodatage, type d'entité, numéro
-d'extrait et statut dans `source_checks` du résultat du service. La page existante
-ignore ce champ supplémentaire, mais affiche les avertissements ajoutés dans
-`limitations` et `uncertainties`, sans changer son contrat `citoyen_report`.
+HTML : suppression des scripts/styles/en-têtes. PDF : couche texte extraite avec
+pypdf dans un processus séparé, huit secondes au plus, 40 pages, 2 Mo de contenu
+décompressé par page et 500 000 caractères. Ces seuils ne sont pas une limite dure
+de mémoire pendant le décodage. Pas d’OCR ni de validation visuelle. Les citations
+ne peuvent pas traverser les pages PDF ; `pdf_page` est le numéro physique dès 1.
 
-Statuts : `matched`, `matched_whitespace`, `not_found`, `domain_not_allowed`,
-`unavailable`, `http_error`, `unsupported_format`, `empty_page`, `too_large`,
-`budget_exceeded`, `redirect_limit`, `invalid_pdf`, `encrypted_pdf`, `pdf_no_text`,
-`pdf_page_limit`, `pdf_content_limit`, `pdf_timeout`, `pdf_extraction_error`.
-Un échec ne prouve ni que le document n'existe
-pas, ni que la citation est inventée : sa présence n'a pas pu être confirmée.
+`verify_sources(report, fetched_sources=corpus)` vérifie le cache transmis sans
+nouvelle lecture réseau. Une URL non collectée reçoit `not_in_corpus`. Les espaces
+et la composition Unicode peuvent être normalisés ; mots, nombres et ponctuation
+ne le sont pas. Une citation manquante fait refuser tout le rapport dans le parcours
+actif. Des pages inaccessibles sont signalées ; un corpus vide produit un rapport
+vide honnête sans deuxième appel Pipelex.
 
-Si tous les extraits sont retrouvés et les appels sont activés, la synthèse Pipelex
-peut commencer. Sinon, le rapport Dust reste affichable avec ses réserves et
-Pipelex n'est pas appelé. Ce choix conservateur porte aussi sur les preuves de
-statut et de contact. Un corpus vide n'entraîne pas d'appel Pipelex.
+Les contrôles retournent URL initiale/finale, date du contrôle, entité, extrait et
+statut (`matched`, `matched_whitespace`, `not_found`, `not_in_corpus`, ou erreur de
+collecte). L’interface affiche les limites textuelles. Retrouver un extrait ne
+prouve pas son interprétation, la date de publication ou l’actualité d’une étape.
+Ces points restent à relire ; les résultats ne sont pas certifiés exhaustifs.
 
-Retrouver une citation ne prouve pas son interprétation, la véracité du résumé,
-la pertinence du document ou l'actualité d'une étape de procédure. Les champs
-Dust ne deviennent donc pas des informations certifiées par ce contrôle.
+La variante `verify_sources(report)` sans cache reste disponible pour les outils
+historiques : elle télécharge au plus huit URL et signale les réserves au rapport.
+Elle n’est pas utilisée par la nouvelle recherche.
 
-## Vérifier un export de Dust
-
-Par défaut, cette commande vérifie uniquement le format, sans réseau :
-
-```powershell
-.\.venv\Scripts\python.exe -m backend.summary_cli data/local/rapport-dust.json --topic "Logement étudiant"
-```
-
-Avec `--run --output data/local/synthese.json`, elle vérifie d'abord les pages,
-puis exécute Pipelex uniquement si les sources sont confirmées et l'environnement
-autorise les appels. Le dossier doit exister et le fichier de sortie doit être
-nouveau. Ce mode consomme des crédits si Pipelex est exécuté. Le module ne charge
-pas `.env` automatiquement. Ne jamais mettre de clé dans le terminal partagé ou Git.
-
-Les tests réseau utilisent exclusivement des réponses HTTP simulées : concordance,
-normalisation des espaces, domaines trompeurs, redirections locales interdites,
-script HTML, HTTP 403/404, PDF avec texte, PDF chiffré/vide/invalide, taille
-excessive et timeout. Une validation sur les pages d'un véritable rapport Dust
-reste à faire quand ce rapport sera disponible.
+Les tests HTTP automatisés sont simulés. Le nouveau parcours Pipelex complet
+n’a pas encore fait l’objet d’un essai réel.
 
 ## Contrôle manuel sur une source réelle
 

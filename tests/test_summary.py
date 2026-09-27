@@ -10,7 +10,7 @@ from backend.summary_service import prepare_summary, synthesize_report, validate
 from backend.pipelex_summary import summarize_interest
 from backend.generated.political_summary.models import SummaryRequest
 from frontend.interface_b import verifier_sortie
-from backend.dust.client import DustResult
+from backend.pipelex_research import ResearchResult
 from src.service import search
 from backend.source_verification import SourceVerification
 
@@ -37,7 +37,7 @@ class SummaryTests(unittest.TestCase):
             self.assertEqual(result['documents'][0][key], original['documents'][0][key])
         self.assertTrue(set(original['limitations']) <= set(result['limitations']))
         self.assertIn('Lien avec le sujet', result['documents'][0]['summary'])
-        verifier_sortie({'mode': 'dust', 'report': result, 'duration_seconds': 0}, 'dust')
+        verifier_sortie({'mode': 'pipelex', 'report': result, 'duration_seconds': 0}, 'pipelex')
 
     def test_request_uses_explicit_interest_not_generated_topic(self):
         request = prepare_summary('Logement étudiant', self.report)
@@ -87,20 +87,17 @@ class SummaryTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 asyncio.run(summarize_interest(request))
 
-    def test_frontend_service_calls_synthesis_only_when_enabled_with_fake_clients(self):
+    def test_service_uses_new_report_without_legacy_synthesis(self):
         with patch.dict(os.environ, {'ENABLE_PIPELEX_CALLS': 'true'}), \
-             patch('src.service.research', return_value=DustResult(self.report, 'fake')), \
-             patch('src.service.verify_sources', return_value=SourceVerification(self.report, [{'status': 'matched'}])), \
-             patch('src.service.analyze_summary', return_value=self.output) as analyzer:
-            result = search('Logement étudiant', '2026-01-01', '2026-12-31')
-        self.assertEqual(analyzer.call_count, 1)
-        verifier_sortie(result, 'dust')
-        self.assertIn('Pipelex', result['report']['limitations'][-1])
-
-    def test_disabled_synthesis_never_calls_analyzer(self):
-        with patch.dict(os.environ, {'ENABLE_PIPELEX_CALLS': 'false'}), \
-             patch('src.service.research', return_value=DustResult(self.report, 'fake')), \
-             patch('src.service.analyze_summary') as analyzer:
+             patch('src.service.research', return_value=ResearchResult(self.report, [])), \
+             patch('backend.pipelex_summary.analyze_summary') as analyzer:
             result = search('Logement étudiant', '2026-01-01', '2026-12-31')
         analyzer.assert_not_called()
-        self.assertEqual(result['report']['documents'][0]['summary'], self.report['documents'][0]['summary'])
+        verifier_sortie(result, 'pipelex')
+
+    def test_disabled_pipeline_never_calls_research(self):
+        with patch.dict(os.environ, {'ENABLE_PIPELEX_CALLS': 'false'}), \
+             patch('src.service.research') as provider:
+            with self.assertRaises(RuntimeError):
+                search('Logement étudiant', '2026-01-01', '2026-12-31')
+        provider.assert_not_called()

@@ -1,0 +1,4 @@
+# Keep method hashes and generated artifacts identical across Windows/Linux.
+*.mthds text eol=lf
+backend/generated/** -text
+scripts/codegen_check.py -text

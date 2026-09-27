@@ -1,111 +1,66 @@
-# Raccordement de la page de l'équipe
+# Parcours actif : Pipelex uniquement
 
-## Priorité actuelle : informer selon le sujet choisi
-
-Le parcours principal est maintenant Dust → synthèse Pipelex → interface.
-Voir `methods/political_summary/README.md` : `src.service.search` utilise cette
-synthèse si les appels Pipelex sont explicitement activés. Aucun appel réel n'a été
-effectué. Les étapes de collecte/comparaison et la persistance décrites plus bas
-restent des extensions de suivi dans le temps, pas un préalable à cette synthèse.
-
-La page Streamlit de l'équipe, `frontend/interface_b.py`, a été récupérée depuis
-`origin/main` (commit `210d188`). Ce dépôt n'ajoute pas de deuxième interface.
-Son point d'entrée `src.service.search(topic, start, end, mode='dust')` est fourni :
-il transmet la période à Dust, filtre les publications datées hors période et
-conserve l'incertitude sur les dates inconnues. Aucun appel réel n'a été effectué.
-
-## Disponible, vérifié hors ligne
-
-- `dust/adapter.py` valide le contrat `citoyen_report` et vérifie que les citations
-  sélectionnées sont présentes dans le texte source réellement récupéré.
-- `comparison_service.py` valide une comparaison avant de proposer un état à conserver.
-- `storage.py` conserve veilles, sources, versions et historique dans SQLite.
-  Une transaction échouée est annulée ; un résultat non confirmé conserve l'état précédent.
-  Une seule actualisation par veille peut être en cours. Des contenus identiques ne
-  créent pas de nouvelle version ; chaque tentative reste dans l'historique.
-- `refresh.py` fournit une simulation persistante sans réseau ni modèle.
-- `dust/client.py` prépare un appel Dust bloquant, sans relance automatique.
-- `pipelex_comparison.py` fournit un appel asynchrone typé à la méthode locale.
-  Les métadonnées `RunResults` restent disponibles avec le résultat.
-
-Les deux clients externes sont **désactivés par défaut et non testés en réel**.
-Le contrôle du JSON et des citations ne certifie pas la vérité d'une analyse.
-
-## Raccordement Python de la simulation
-
-Depuis la racine du dépôt, après installation de `requirements.txt` :
+La page Streamlit existante appelle :
 
 ```python
-from backend.storage import Store
-from backend.refresh import refresh_demo
-
-store = Store('data/local/watch.sqlite3')
-watch_id = store.add_watch('Accessibilité des transports', mode='demo')
-refresh_demo(store, watch_id, 'Version du 10 octobre')
-refresh_demo(store, watch_id, 'Version du 20 octobre')
-documents = store.documents(watch_id)
-history = store.runs(watch_id)
+from src.service import search
+result = search('Logement étudiant', '2026-01-01', '2026-09-27', mode='pipelex')
 ```
 
-Scénarios : `Version du 10 octobre`, `Version du 20 octobre`, `Source indisponible`.
-La première récupération valide est nouvelle dans cette veille ; répéter une version
-produit « inchangé » ; changer de version produit « modifié ». Une indisponibilité
-produit « non confirmé », sans effacer la version conservée. Tout est fictif,
-quel que soit le sujet saisi. Aucun contact ou fait politique réel n'est généré.
+Cet appel consomme des crédits si les variables `PIPELEX_API_KEY` et
+`ENABLE_PIPELEX_CALLS=true` sont présentes. Aucune clé Dust n’est nécessaire.
+Ne pas lancer cet exemple lors des tests hors ligne.
 
-Pour afficher une fiche, utiliser `title`, `url`, `report.description`,
-`report.change_type`, `report.evidence`, `report.limitations` et
-`snapshot.retrieved_at` si un état valide existe. Afficher séparément la date
-de tentative (`runs.started_at`) et la date du dernier contenu conservé.
-Les états d'exécution sont `running`, `completed`, `partial`, `failed`.
-L'historique détaillé des rapports est conservé dans la table `results`.
+## Étapes
 
-Une interruption brutale peut laisser `running` : ne pas relancer automatiquement
-un appel potentiellement facturé. Après vérification de l'absence de processus actif,
-un développeur peut clôturer explicitement la tentative avec `store.fail(run_id, motif)`.
+1. Validation du sujet, des dates et de l’activation explicite.
+2. `political_search.find_sources(request: SearchRequest) -> SearchResult` :
+   une recherche PipeSearch, au plus six résultats sur les trois domaines officiels.
+3. Le backend collecte les pages HTML/PDF. La réponse textuelle et les snippets du
+   moteur de recherche sont écartés : ils ne deviennent jamais des preuves.
+4. `political_report.build_report(request: ReportRequest) -> Report` reçoit
+   uniquement le texte effectivement collecté, les URLs et les limites de collecte.
+   Aucun appel de rapport si aucune page n’est exploitable.
+5. Validation du JSON brut, du sujet, des identifiants, références et preuves de
+   procédure ; concordance des citations avec le corpus transmis. Une citation
+   absente ou une URL non lue fait échouer la recherche, sans résultat fictif de secours.
+6. Filtrage des dates de publication hors période et suppression des contacts
+   devenus orphelins. Date inconnue : document conservé avec réserve explicite.
+7. Retour à l’interface avec `mode='pipelex'`, `report`, `duration_seconds` et
+   `source_checks`. Les identifiants de vérification suivent les documents filtrés.
 
-## Ce qui reste à intégrer
+Le contrat `report_schema.json` conserve les champs `schema_version`, `topic`,
+`scope`, `documents`, `contacts` et `limitations`. Au plus quatre documents et trois
+contacts. La première version traite projets et propositions de loi. Un contact
+n’est rendu que si les pages disponibles documentent sa relation et ses coordonnées
+publiques ; il est normal d’obtenir `contacts=[]`.
 
-1. Raccorder les veilles de session de la page au stockage SQLite en conservant
-   sujet, mode ET période (le stockage actuel ne conserve que sujet et mode).
-   Ajouter l'affichage des comparaisons dans cette même page, avec sa développeuse.
-2. Ajouter le collecteur de pages sources (dates réelles, erreurs, PDF, redirections,
-   texte extrait et périmètre clairement identifiés). Les résumés Dust ne sont jamais
-   des instantanés sources. Une même URL n'établit pas à elle seule l'identité juridique.
-3. Relier recherche Dust → validation → collecte des sources → comparaison Pipelex
-   → validation → transaction SQLite. Recontrôler aussi les sources déjà connues
-   qu'une nouvelle recherche ne retrouve pas ; une absence ne signifie pas suppression.
-4. Conserver les limites, les preuves de statut et les relations/contacts séparés
-   des changements de contenu ; aucune prise de contact automatique.
-5. Après autorisation explicite d'essais réels, vérifier un seul parcours avec un
-   budget convenu. Aucun appel Pipelex n'est autorisé par les tests locaux.
-6. En dernier : authentification pour un déploiement partagé et planification quotidienne.
+Les modules d’appels typés conservent `RunResults` avec le résultat. Le contrôleur
+retourne ces métadonnées dans `ResearchResult.runs` aux appelants Python, pas à
+l’interface. Les erreurs HTTP ne sont pas affichées en clair. Il n’y a pas de retry
+applicatif : un timeout ne garantit pas l’annulation distante.
 
-## Configuration externe, pour plus tard
+## Types et validation
 
-Ne jamais placer les clés dans le frontend, Git ou une conversation. Le programme
-appelant doit charger les variables d'environnement ; les modules ne lisent pas
-automatiquement `.env`. L'exemple garde `ENABLE_DUST_CALLS=false` et
-`ENABLE_PIPELEX_CALLS=false`. Les identifiants connus sont le workspace
-`E1CnnabqLA` et l'agent `McsricPkF8`.
+Types Pydantic générés dans `generated/political_search` et `generated/political_report`
+par le générateur Pipelex, moteur 0.65.0. Ne pas les éditer. Leurs `sources.json`
+pointent vers les méthodes locales et enregistrent leurs SHA-256 ; le chargement
+refuse toute dérive avant un appel. `scripts/codegen_check.py` vérifie hors ligne
+les fichiers générés et les sources. Les deux bundles ont passé la validation
+statique et ne contiennent aucun placeholder de pipe.
 
-`research(topic)` retourne `DustResult(report, conversation_id)` ;
-`await compare_document(ComparisonRequest(...))` retourne
-`ComparisonRun(output, results)`. Ne pas exposer les exceptions HTTP brutes aux utilisateurs
-ni les enregistrer avec des informations d'authentification. Un timeout n'assure pas
-l'annulation distante : inspecter la tentative avant de recommencer.
+Les tests automatiques remplacent les réponses Pipelex et HTTP par des données
+fictives. Ils couvrent notamment le contrat de l’interface, les citations inventées,
+les domaines trompeurs, la troncature, les PDF, le filtre de dates, les sorties vides
+et la désactivation avant réseau. Le nouveau parcours reste à tester en réel.
 
-Le client Dust repose sur la [documentation officielle de création d'une conversation](https://docs.dust.tt/api-reference/conversations/create-a-new-conversation).
-La compatibilité réelle de la réponse devra être confirmée lors du premier essai autorisé.
+## Travaux futurs
 
-## Vérifications sans appels externes
+- Évaluer un parcours réel avec un budget et vérifier manuellement la fidélité du rapport.
+- Affiner la recherche de dossiers législatifs si les résultats ne suffisent pas à établir une étape.
+- Raccorder les veilles de session au stockage existant en conservant aussi la période.
+- Ajouter éventuellement un suivi des versions ; ce n’est pas une condition pour informer selon un sujet.
 
-```powershell
-.\.venv\Scripts\python.exe -m unittest discover -s tests -v
-.\.venv\Scripts\python.exe scripts/codegen_check.py backend/generated/political_watch
-.\.venv\Scripts\python.exe -m mypy backend/pipelex_comparison.py backend/clients.py backend/generated backend/dust/client.py
-```
-
-Les types Pydantic sont générés depuis tous les `.mthds` du bundle.
-Après modification, utiliser `pipelex-integrate` pour les régénérer ; ne pas éditer
-`models.py` ou `codegen.lock`. Le contrôle de dérive est entièrement local.
+Les fichiers Dust et l’ancienne synthèse sont conservés comme historiques. Ils ne
+sont pas importés par le parcours actif. Aucun changement distant dans le compte
+Dust ni déploiement au catalogue Pipelex n’a été effectué.

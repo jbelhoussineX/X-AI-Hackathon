@@ -13,7 +13,7 @@ import unicodedata
 from urllib.parse import urljoin, urlsplit
 
 import httpx
-from backend.dust.adapter import validate_dust_report
+from backend.report_contract import validate_report
 
 HOSTS = frozenset({'assemblee-nationale.fr', 'www.assemblee-nationale.fr',
                    'senat.fr', 'www.senat.fr', 'legifrance.gouv.fr', 'www.legifrance.gouv.fr'})
@@ -136,11 +136,12 @@ class SourceVerification:
         return bool(self.checks) and all(c['status'] in ('matched', 'matched_whitespace') for c in self.checks)
 
 
-def verify_sources(report, *, transport=None):
-    validate_dust_report(report)
+def verify_sources(report, *, transport=None, fetched_sources=None):
+    """With a supplied corpus, verify it exclusively without fetching new URLs."""
+    validate_report(report)
     result = deepcopy(report)
     checks = []
-    cache: dict[str, FetchedSource] = {}
+    cache: dict[str, FetchedSource] = dict(fetched_sources or {})
     deadline = monotonic() + 30
     with httpx.Client(transport=transport, follow_redirects=False, trust_env=False,
                       headers={'User-Agent': 'ReperesCitoyens-Hackathon/0.1'}) as client:
@@ -149,7 +150,8 @@ def verify_sources(report, *, transport=None):
                 for evidence_index, evidence in enumerate(entity['evidence'], 1):
                     url = evidence['url']
                     if url not in cache:
-                        cache[url] = (FetchedSource('budget_exceeded', '', url) if len(cache) >= MAX_PAGES
+                        cache[url] = (FetchedSource('not_in_corpus', '', url) if fetched_sources is not None
+                                      else FetchedSource('budget_exceeded', '', url) if len(cache) >= MAX_PAGES
                                       else fetch_text(client, url, deadline))
                     source = cache[url]
                     status, final_url = source.status, source.final_url
