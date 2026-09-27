@@ -8,6 +8,7 @@ from streamlit.testing.v1 import AppTest
 from backend.profiles import ProfileStore, ProfileError, identity_from_claims
 from frontend import profile as ui
 from src.contracts import ROOT
+from frontend.recent_activity import source_favorite_key
 
 
 def identity(subject):
@@ -62,12 +63,13 @@ def test_rejects_invalid_questionnaire_and_anonymous_storage(tmp_path):
 def test_guest_can_search_save_and_reopen_without_database(monkeypatch, tmp_path):
     monkeypatch.setattr(ui, 'PROFILE_PATH', tmp_path / 'no_database.sqlite3')
     monkeypatch.setattr(ui, 'current_identity', lambda: None)
+    monkeypatch.setenv('ENABLE_PIPELEX_CALLS', 'true')
     fetch = Mock(return_value=result())
-    monkeypatch.setattr('frontend.recent_activity.search_recent', fetch)
+    monkeypatch.setattr('frontend.recent_activity.agent_research', fetch)
     app = AppTest.from_file(str(ROOT / 'app.py')).run()
     app.text_input(key='recent_topic').set_value('logement')
     next(b for b in app.button if b.label == 'Rechercher').click().run()
-    app.button(key='recent_favorite_0').click().run()
+    app.button(key=source_favorite_key(result()['events'][0])).click().run()
     app.radio(key='b_page').set_value('Favoris').run()
     assert any(t.value == 'Texte fictif' for t in app.text)
     app.radio(key='b_page').set_value('Historique').run()
@@ -88,15 +90,16 @@ def test_ui_history_favorites_and_questionnaire_without_ai(monkeypatch, tmp_path
     alice = identity('alice')
     monkeypatch.setattr(ui, 'PROFILE_PATH', tmp_path / 'profiles.sqlite3')
     monkeypatch.setattr(ui, 'current_identity', lambda: alice)
+    monkeypatch.setenv('ENABLE_PIPELEX_CALLS', 'true')
     fetch = Mock(return_value=result())
     ai = Mock(side_effect=AssertionError('No AI'))
-    monkeypatch.setattr('frontend.recent_activity.search_recent', fetch)
-    monkeypatch.setattr('frontend.recent_activity.build', ai)
+    monkeypatch.setattr('frontend.recent_activity.agent_research', fetch)
+    monkeypatch.setattr('backend.recent_brief.build', ai)
     app = AppTest.from_file(str(ROOT / 'app.py')).run()
     app.text_input(key='recent_topic').set_value('logement')
     next(b for b in app.button if b.label == 'Rechercher').click().run()
     assert not app.exception
-    app.button(key='recent_favorite_0').click().run()
+    app.button(key=source_favorite_key(result()['events'][0])).click().run()
     store = ProfileStore(ui.PROFILE_PATH)
     assert len(store.items(alice, 'favorite')) == 1
     assert len(store.items(alice, 'history')) == 1
@@ -104,10 +107,12 @@ def test_ui_history_favorites_and_questionnaire_without_ai(monkeypatch, tmp_path
     next(b for b in app.button if b.label == 'Ouvrir les résultats').click().run()
     assert not app.exception
     assert app.session_state['b_page'] == 'Recherche'
-    fetch.assert_called_once_with('logement', months=3)
+    # Search uses the profile's default period, including on the first visit.
+    fetch.assert_called_once_with(['logement'], months=2)
+    assert app.number_input(key='recent_amount').value == 2
     ai.assert_not_called()
     app.radio(key='b_page').set_value('Favoris').run()
-    next(b for b in app.button if b.label == 'Retirer des favoris').click().run()
+    next(b for b in app.button if b.label == '★').click().run()
     assert store.items(alice, 'favorite') == []
     app.radio(key='b_page').set_value('Mon profil').run()
     app.selectbox(key='profile_answer_genre').set_value('Femme')

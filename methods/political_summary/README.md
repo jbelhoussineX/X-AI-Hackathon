@@ -1,4 +1,7 @@
-# Synthèse des informations liées à un sujet
+# Synthèse historique — compatibilité
+
+Cette méthode n’est pas appelée par l’interface actuelle. Voir le
+[parcours agentique actif](../../docs/ANALYSE_AGENTIQUE.md).
 
 Parcours principal : **sujet → recherche Dust → explication Pipelex → interface**.
 Pas besoin de deux documents ni de version antérieure. L'ancienne méthode
@@ -44,10 +47,9 @@ il conserve les résumés Dust en indiquant explicitement que Pipelex est désac
 Un corpus vide n'entraîne aucun appel Pipelex. Une erreur n'est pas remplacée par
 une fausse réussite ni une réponse fictive. Le mode Démonstration existant n'appelle rien.
 
-Un premier essai réel explicitement autorisé a réussi sur données fictives
-(voir `TEST_RESULT.md`). Le parcours Dust réel reste à vérifier. Les clés et activations restent dans
-l'environnement du serveur, jamais dans le frontend. Ne pas activer les appels
-pour vérifier ce développement : les tests utilisent des analyseurs factices.
+Le rapport fictif utilisé par les tests de compatibilité est conservé dans
+`tests/fixtures/political_summary/report.json`. Les tests utilisent des réponses
+simulées et ne nécessitent pas de clé.
 
 ## Vérification
 

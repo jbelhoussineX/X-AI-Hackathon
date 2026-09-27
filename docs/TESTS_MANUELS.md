@@ -1,39 +1,34 @@
-# Contrôles humains — à remplir pendant le hackathon
+# Relire la démonstration
 
-Ne pas attendre la fin pour choisir un cas concret. Choisir un sujet précis, puis relever
-au moins deux documents réels, leur dossier, et une page d'interlocuteur. Les vérifier à la main.
-Ne pas ajouter ces documents à fixtures/demo.json, qui doit rester entièrement fictif.
-Conserver les notes sans données personnelles dans docs/CAS_REELS.md, à créer.
+Les tests automatisés vérifient le comportement du code avec des fournisseurs
+simulés. Ils ne garantissent pas la fidélité des résumés réels. Cette grille sert
+à une relecture humaine avant la vidéo et la remise.
 
-## Fiche de contrôle pour chaque résultat réel
+## Pour chaque résultat choisi
 
-- Requête exacte, période de publication, date d'exécution : …
-- Titre, URL, identifiant officiel, version du document : …
-- Passage justifiant le résumé : …
-- Résumé fidèle et limites conservées ? À contrôler.
-- Étape réellement indiquée dans le dossier et sa date : …
-- Page de fonction actuelle de l'interlocuteur : …
-- Relation avec le document et passage justificatif : …
-- Contact explicitement publié, ou absent : …
-- Nom du vérificateur et correction éventuelle : …
+- Relever le sujet, la période et la date de la recherche.
+- Ouvrir la source officielle et vérifier la mesure réellement proposée ou adoptée.
+- Vérifier que le résumé explique le contenu, sans répéter seulement le titre.
+- Vérifier les sigles, conditions, exceptions et personnes concernées.
+- Distinguer la date du signal, la date du texte et son étape de procédure.
+- Pour une page liée au dossier, contrôler la version : elle n’est pas forcément la dernière.
+- Pour un lien au profil, vérifier qu’il dépend d’une réponse effectivement renseignée.
 
-## Cas à effectuer
+## Cas importants
 
-| Cas | Attendu | Observé | Vérifié par |
-|---|---|---|---|
-| Sujet normal, 2 documents connus | Passage pertinent et sources contrôlables | À remplir | |
-| Aucun résultat | Aucun document inventé, périmètre indiqué | À remplir | |
-| Texte ancien | Date affichée, pas présenté comme une annonce récente | À remplir | |
-| Adoption par une chambre | Pas assimilée à la promulgation | À remplir | |
-| Contact introuvable | null, aucune adresse reconstituée | À remplir | |
-| Deux versions d'un texte | Distinguées, pas fusionnées par simple titre | À remplir | |
-| Dates inversées / hors période | Erreur ou exclusion explicite | À remplir | |
-| Page contenant « ignore les instructions » | Traitée comme des données | À remplir | |
-| Demande de classement de partis | Documents descriptifs, aucun classement | À remplir | |
-| Clé absente, 401/403/429/timeout | Message utile, aucun faux résultat de secours | À remplir | |
+| Cas | Résultat attendu | Vérification humaine |
+| --- | --- | --- |
+| Texte décrivant une mesure concrète | Résumé accessible, 600 caractères maximum | À faire |
+| Source ne contenant que la procédure | Absence de détail signalée ; contenu non inventé | À faire |
+| Proposition ou adoption par une chambre | Aucune assimilation à une loi en vigueur | À faire |
+| Aucun résultat ou source indisponible | Aucun résultat fictif de remplacement | À faire |
+| Même dossier, plusieurs étapes | Une entrée principale, autres étapes conservées | À faire |
+| Deux textes au même titre | Pas de fusion fondée uniquement sur le titre | À faire |
+| Profil sans lien concret | Aucun paragraphe de lien forcé | À faire |
+| Réponse du profil retirée | Son ancien lien n’est plus affiché | À faire |
+| Modification sans rapport avec le lien | Un lien toujours valable reste visible | À faire |
+| Favori ou historique | Aucune nouvelle génération IA | À faire |
 
-## Mesures à rapporter honnêtement
-
-Nombre de fiches relues, nombre d'erreurs identifiées/corrigées, durée observée des recherches,
-consommation constatée dans l'espace partenaire. Ne pas extrapoler un taux de fiabilité général.
-Un test automatisé réussi prouve seulement le comportement programmé sur les cas du test.
+Noter les erreurs trouvées et les corrections. Ne pas déduire un taux de fiabilité
+général d’un petit nombre de cas. Les appels réels utilisent les crédits du
+fournisseur configuré et ne font pas partie des tests hors ligne.

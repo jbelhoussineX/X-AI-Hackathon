@@ -1,229 +1,186 @@
-# X-AI-Hackathon — Sed Lex
+![Sed Lex — Les textes publics, à portée de compréhension.](docs/assets/sed-lex-banner.svg)
 
-**Nouveau :** le bloc Actualités récentes inclut les débats parlementaires et les
-communiqués du Sénat, avec une synthèse Pipelex facultative des passages collectés.
-Voir [les sources, le fonctionnement et les limites](docs/ACTUALITES_RECENTES.md).
-L'accueil présente ce formulaire unique. Le rapport législatif historique reste
-disponible dans le code, avec son contrat et son filtre de publication.
+# Sed Lex
 
-**Compte et profil :** la connexion Google est facultative. **Mon profil** permet
-d'enregistrer un nom d'affichage, jusqu'à huit sujets choisis et une période
-d'actualités préférée. Les profils sont séparés par l'identifiant Google stable
-et conservés dans `data/local/profiles.sqlite3` (ignoré par Git), sans jeton Google.
-La recherche reste disponible sans compte.
-Le bouton d'un sujet préremplit la recherche ; il ne lance aucun appel IA.
+**Comprendre les textes qui vous concernent, à partir de sources officielles.**
 
-L'activation nécessite un client OAuth Google de type **Application Web** et
-`.streamlit/secrets.toml`, préparé depuis l'exemple public. La connexion n'est pas
-active avant cette configuration. Voir [le guide Google et profil](docs/CONNEXION_GOOGLE.md).
-Pour la configuration locale fournie, ouvrir `http://localhost:8502` ; le retour
-Google doit être exactement `http://localhost:8502/oauth2callback`.
+Prototype développé pour **X-IA — Rise of Agents X**, du 25 au 27 septembre 2026.
+Par **Arseniy, Jihane et Ryane**.
 
-Agent de recherche documentaire sur les politiques françaises, développé pour un
-hackathon de trois jours. L’utilisateur choisit un sujet et une période ; le
-programme recherche des textes parlementaires et présente un résumé, des preuves
-et des limites, sans recommander de choix politique.
+[Tester le projet](docs/TESTER.md) · [Fonctionnement de l’agent](docs/ANALYSE_AGENTIQUE.md) · [Sources et couverture](docs/ACTUALITES_RECENTES.md) · [Fiche de remise](docs/SOUMISSION.md)
 
-Le parcours actif collecte les événements des sources officielles sans appel IA.
-Une synthèse **Pipelex** est proposée après la recherche, sur demande explicite.
-Dust ne fait plus partie de ce parcours.
+---
 
-## Démarrer
+## Le problème
 
-Depuis la racine du dépôt, dans PowerShell, avec Python 3.11 à 3.14 :
+Une proposition de loi, un amendement ou un débat peuvent concerner le logement,
+les études ou le travail. Pourtant, les retrouver, comprendre leur contenu et
+identifier leur étape de procédure demande de parcourir plusieurs sites et un
+vocabulaire spécialisé.
 
-```powershell
+**Sed Lex aide à passer d’un sujet de la vie quotidienne à des textes sourcés et
+à une explication accessible.** L’application informe, sans recommandation de vote
+ni classement de responsables politiques.
+
+## Ce que l’on peut faire
+
+| Dans l’application | Ce que cela apporte |
+| --- | --- |
+| **Rechercher** un ou plusieurs sujets, sur une période choisie | Une sélection IA dans les notices parlementaires collectées |
+| **Comprendre** les nouveautés | Des résumés de 600 caractères maximum, avec liens vers les sources |
+| **Renseigner sa situation**, facultativement | Un lien concret avec le profil lorsqu’il est étayé, et un ordre adapté |
+| **Consulter les sources législatives** | Des pages officielles ; les répétitions sont regroupées, les étapes distinctes conservées |
+| **Retrouver une recherche ou un favori** | Un historique de session et des étoiles, sans nouvelle génération IA |
+
+Le profil, l’historique et les favoris restent dans la session du navigateur.
+Aucun compte Google n’est nécessaire. Un redémarrage ou une nouvelle session peut
+les effacer. Les réponses explicites du questionnaire peuvent être transmises à
+la synthèse ; le nom du profil n’est pas transmis.
+
+## Un véritable parcours agentique
+
+Pipelex orchestre des étapes LLM utilisant **OpenAI `gpt-4o-mini`** dans le mode
+local recommandé. L’IA sélectionne les documents selon leur sens, évalue les
+preuves, décide si un complément est utile, puis rédige la synthèse.
+
+```mermaid
+flowchart TD
+    U["Sujets et période · Streamlit"] --> C["Collecte des notices officielles · Python"]
+    C --> S["IA · sélection sémantique"]
+    S --> P["Lecture des sources sélectionnées"]
+    P --> E["IA · évaluation des preuves"]
+    E --> D{"Complément utile ?"}
+    D -- Oui --> X["IA · sélection complémentaire puis lecture"]
+    D -- Non --> R["IA · résumé et lien éventuel au profil"]
+    X --> R
+    R --> V["Contrôles Python · références, citations et format"]
+    V --> A["Résultats sourcés · Streamlit"]
+```
+
+La boucle est bornée : **un seul complément**, généralement trois appels LLM,
+quatre avec complément. Aucun nouvel essai automatique ni changement de fournisseur.
+Les données collectées ne peuvent pas choisir les outils ou remplacer les consignes.
+
+[Lire les étapes, les budgets et les contrôles →](docs/ANALYSE_AGENTIQUE.md)
+
+## Tester en local
+
+**Prérequis : Python 3.12, Internet et une clé API OpenAI avec des crédits pour
+la recherche réelle.** Le moteur Pipelex est installé localement. Aucun accès
+Dust, Google ou Pipelex hébergé n’est nécessaire pour ce mode.
+
+Le dépôt ne contient aucune clé d’équipe. Sans clé, l’interface et les tests hors
+ligne restent accessibles ; le bouton de recherche est désactivé par défaut.
+
+### 1. Récupérer et installer
+
+Sur macOS/Linux, depuis un nouveau dossier :
+
+```bash
+git clone --branch feat/pipelex-comparison https://github.com/jbelhoussineX/X-AI-Hackathon.git
+cd X-AI-Hackathon
+python --version                 # Python 3.12
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements-ui.txt
-.\.venv\Scripts\python.exe -m streamlit run app.py --server.address 127.0.0.1
+.venv/bin/python -m pip install -r requirements-ui.txt
+cp .env.example .env
 ```
 
-Dans **Recherche**, saisir un sujet et une période, puis cliquer **Rechercher**.
-Le réglage **Sans synthèse** permet de consulter les sources officielles sans
-appel IA ; la collecte nécessite le réseau. **Avec synthèse** permet ensuite
-d'autoriser et de demander une synthèse Pipelex depuis les résultats.
-Le menu **Mon profil** donne accès aux préférences après connexion Google.
+**Windows / PowerShell :** suivre les commandes équivalentes dans le
+[guide du testeur](docs/TESTER.md). La configuration `.pipelex/` est déjà livrée ;
+il n’est pas nécessaire de lancer `pipelex init`.
 
-Le formulaire historique, conservé dans le code mais absent de l'accueil, appelle
-`src.service.search(topic, start, end, mode='pipelex')` après clic et consentement.
-Par défaut, les inventaires officiels Sénat et Assemblée sont téléchargés sans IA,
-puis les pages pertinentes sont collectées. En mode hébergé, un appel de synthèse est demandé si le corpus n'est pas vide ;
-en mode local, deux appels OpenAI évaluent les manques puis rédigent le rapport. Aucune synthèse n'est demandée si la collecte est vide.
-Les extraits sont contrôlés dans le corpus exact transmis. Il n’y a ni relance automatique, ni planification.
-Ce nombre d’exécutions ne constitue pas un plafond de facturation fournisseur.
+### 2. Configurer localement
 
-## Configuration
+Dans le nouveau `.env`, renseigner sa propre clé et activer le mode local :
 
-```powershell
-Copy-Item .env.example .env
+```dotenv
+OPENAI_API_KEY=remplacer_localement_par_sa_cle
+PIPELEX_EXECUTION_MODE=local
+ENABLE_PIPELEX_CALLS=true
+DO_NOT_TRACK=1
 ```
 
-Deux exécutions sont disponibles, sans changer l'interface :
+`.env` est ignoré par Git. `PIPELEX_API_KEY` peut rester vide. La configuration
+se charge au démarrage ; les variables déjà définies dans le terminal sont
+prioritaires. Une recherche réelle consomme les crédits associés à la clé.
 
-- `PIPELEX_EXECUTION_MODE=hosted` (défaut) : API Pipelex, avec `PIPELEX_API_KEY`.
-- `PIPELEX_EXECUTION_MODE=local` : moteur Pipelex sur l'ordinateur et API OpenAI,
-  avec `OPENAI_API_KEY`. C'est le parcours ajouté par l'équipe sur main.
+### 3. Lancer
 
-`POLITICAL_DATA_SOURCE=official` sélectionne la collecte officielle.
-`web` active explicitement l'ancien parcours de recherche IA : deux méthodes
-hébergées, ou trois à quatre appels OpenAI avec le moteur local.
-Aucune bascule automatique entre fournisseurs ou modes de recherche.
-
-**Ne jamais committer `.env` ou une clé API.** En mode hébergé, renseigner `PIPELEX_API_KEY` et
-`ENABLE_PIPELEX_CALLS=true`. Les clients lisent
-les variables du processus : `.env` n’est pas chargé automatiquement.
-Les appels restent désactivés par défaut. Pour un essai volontaire, saisir la clé
-sans l’afficher ni l’inscrire dans l’historique PowerShell, puis lancer l’interface
-depuis cette même fenêtre :
-
-```powershell
-$pipelexSecret = Read-Host "Cle API Pipelex" -AsSecureString
-$env:PIPELEX_API_KEY = [System.Net.NetworkCredential]::new('', $pipelexSecret).Password
-$env:ENABLE_PIPELEX_CALLS = 'true'
-.\.venv\Scripts\python.exe -m streamlit run app.py --server.address 127.0.0.1
+```bash
+.venv/bin/python -m streamlit run app.py --server.address 127.0.0.1 --server.port 8502 --browser.gatherUsageStats false
 ```
 
-Après l’arrêt de Streamlit :
+Ouvrir **http://localhost:8502** et garder le terminal ouvert. Choisir un sujet,
+par exemple **logement**, une période, puis cliquer sur **Rechercher**.
+Le profil est facultatif. Aucun appel IA ne part au simple démarrage ou lors d’un
+clic sur un favori.
 
-```powershell
-$env:ENABLE_PIPELEX_CALLS = 'false'
-Remove-Item Env:PIPELEX_API_KEY
-Remove-Variable pipelexSecret
+[Installation détaillée et résolution des problèmes →](docs/TESTER.md)
+
+## Sources, garanties et limites
+
+- **Sources officielles :** dossiers de la 17e législature de l’Assemblée nationale,
+  export DOSLEG du Sénat, publications, amendements et comptes rendus parlementaires.
+  Les textes explicitement liés aux dossiers peuvent être lus pour expliquer les mesures.
+- **Statuts distincts :** un dépôt, un débat, une adoption et une promulgation ne
+  sont pas interchangeables. Une mise en ligne récente ne prouve pas une nouvelle loi.
+- **Contrôles effectifs :** seules des références présentes dans le corpus sont
+  acceptées ; les citations doivent se trouver dans les passages effectivement collectés.
+- **Limites assumées :** au plus 120 notices candidates et six événements par
+  sélection. Les passages sont partiels ; la version d’un texte lié peut être ancienne.
+  La collecte n’est pas exhaustive et aucun statut de droit en vigueur n’est certifié.
+- **Lecture humaine nécessaire :** la présence d’une citation ne garantit pas que
+  le modèle l’interprète correctement. Si la source n’explique pas une mesure,
+  l’IA doit le signaler plutôt que l’inventer.
+
+Pas de presse généraliste ni de réseaux sociaux dans le parcours livré. Pas de
+profil politique, d’email automatique ou de contenu fictif substitué à une erreur.
+
+[Sources et fraîcheur →](docs/ACTUALITES_RECENTES.md) · [Contrôles manuels →](docs/TESTS_MANUELS.md)
+
+## Validation sans appel IA payant
+
+```bash
+PYTHON_DOTENV_DISABLED=1 DO_NOT_TRACK=1 .venv/bin/python -m pytest -q
+.venv/bin/python -m pip check
 ```
 
-## Structure utile
+**Dernière vérification : 561 tests et 28 sous-tests réussis**, y compris dans une
+copie isolée sans les secrets ni les données locales de l’équipe. L’installation
+a été résolue en simulation sur Python 3.12 ; les dépendances de l’environnement
+utilisé passent `pip check`. Les appels fournisseurs sont simulés pendant les tests.
+Ces contrôles ne prouvent ni le crédit disponible d’un évaluateur ni la qualité
+d’une génération réelle. Aucun appel IA payant n’a été lancé pour cette vérification.
+
+## Dans le dépôt
 
 ```text
-app.py                           Point d’entrée Streamlit
-frontend/interface_b.py          Interface de l’équipe
-frontend/profile.py              Connexion Google et page Mon profil
-backend/profiles.py              Préférences SQLite séparées par compte Google
-src/service.py                   Contrat du formulaire et filtre de dates
-backend/pipelex_research.py       Parcours hébergé et vérification
-backend/data_sources/            Inventaires et collecte officielle
-src/openai_research.py            Parcours local avec le même corpus
-methods/recherche_citoyenne/      Graphe local ajouté par l’équipe
-backend/pipelex_search.py         Appel typé de recherche
-backend/pipelex_report.py         Appel typé de rapport
-backend/report_schema.json       Contrat citoyen_report 1.0 indépendant du fournisseur
-backend/source_verification.py   Contrôle des pages HTML/PDF
-backend/generated/               Types générés et empreintes de sources
-methods/political_search/        PipeSearch sur les domaines officiels
-methods/political_report/        Rapport structuré à partir du corpus lu
-tests/                           Tests locaux et réponses simulées
+app.py                      Démarrage Streamlit
+frontend/                   Recherche, profil, historique et favoris
+backend/recent_agent.py     Sélection, évaluation, complément et synthèse
+backend/data_sources/       Collecte des données et pages officielles
+methods/recent_agent/       Étapes LLM définies avec Pipelex
+src/recent_agent_worker.py  Exécution isolée et diagnostics filtrés
+tests/                      Vérifications hors ligne et réponses simulées
+docs/                       Installation, architecture, sources et remise
 ```
 
-`backend/dust/` et les méthodes historiques `political_summary` et
-`political_watch` restent disponibles pour référence et compatibilité des anciens
-outils ; le formulaire ne les appelle plus. Le stockage des profils utilise SQLite ;
-la persistance des veilles et la comparaison de versions restent des extensions
-hors du parcours principal.
+Les anciens adaptateurs Dust, rapports v1 et outils de comparaison restent dans
+le dépôt pour la compatibilité et leurs tests. Ils ne constituent pas le parcours
+présenté dans l’interface. [Repères techniques →](docs/DEVELOPPEMENT.md)
 
-## Vérifier sans appel IA
+## Équipe et remise
 
-```powershell
-.\.venv\Scripts\python.exe -m pytest -q
-.\.venv\Scripts\python.exe scripts/codegen_check.py backend/generated/political_search backend/generated/political_report backend/generated/political_summary backend/generated/political_watch
-.\.venv\Scripts\python.exe -m mypy backend/pipelex_search.py backend/pipelex_report.py backend/method_bundle.py backend/pipelex_research.py backend/source_verification.py backend/report_contract.py src/service.py backend/generated
-```
+**Arseniy · Jihane · Ryane**
 
-Les deux nouvelles méthodes ont été validées par Pipelex et leurs types générés
-avec `python-pydantic`. Aucun essai réel de ce nouveau parcours complet n’a encore
-été exécuté. L’ancien essai de synthèse sur un cas fictif ne valide pas la nouvelle
-recherche.
+Le projet a été créé pendant le hackathon ; selon la déclaration de l’équipe,
+aucun projet préexistant n’a été repris. Les bibliothèques utilisées restent des
+dépendances tierces.
 
-À faire : un essai réel limité sur un sujet, puis une relecture humaine des
-résumés, des dates et des citations. Les veilles restent en mémoire de session ;
-leur persistance et leur actualisation quotidienne ne sont pas raccordées.
+**Vidéo de présentation : lien à ajouter avant la remise — durée maximale 2 minutes.**
+La [fiche de remise](docs/SOUMISSION.md) contient la description courte et le déroulé
+proposé pour la vidéo. Échéance indiquée dans le règlement : **27 septembre 2026, 23 h 59**.
 
-Voir [le raccordement](backend/INTEGRATION.md) et [les limites des sources](backend/SOURCES.md).
+---
 
-La [partie API et données](backend/data_sources/README.md) est raccordée aux deux
-modes Pipelex. La recherche est lexicale sur titres/thèmes ; elle n'est pas exhaustive.
-Les métadonnées servent au repérage, les pages lues servent aux citations.
-L'API Légifrance/PISTE n'est pas connectée. Aucun statut « en vigueur » n'est certifié.
-
-Pour vérifier uniquement la collecte, sans clé ni appel IA :
-
-```powershell
-.\.venv\Scripts\python.exe -m backend.data_sources.official --topic logement --start 2025-01-01 --end 2026-09-27 --output data/local/collecte-logement.json
-```
-
-La sortie est ignorée par Git. Choisir un nouveau nom si le fichier existe déjà.
-Le contrôle réel du 27 septembre a recueilli dix pages, six notices sélectionnées,
-60 000 caractères (limite atteinte, troncatures signalées). Il ne valide pas un résumé IA.
-
-Licence MIT — voir [LICENSE](LICENSE).
-
-## Validation de l'intégration du 27 septembre 2026
-
-191 tests et 28 sous-tests passent (`python -m pytest -q`), dont le moteur
-Pipelex local avec réponses OpenAI simulées et l'interface Streamlit.
-`pip check` ne détecte aucune dépendance cassée ; les quatre ensembles de types
-générés sont à jour. Mypy passe sur les huit fichiers ciblés du service et des données.
-Le SDK Pipelex 0.13.0 et le moteur 0.67.0 partagent la dépendance MTHDS 0.16.0.
-Les appels payants du parcours fusionné n'ont pas été testés.
-
-## Correctif équipe intégré
-
-Le commit `4eb20af` de main améliore le parcours local OpenAI : recherche web,
-validation des rapports, gestion des compléments tronqués et diagnostics expurgés.
-Voir [le branchement](docs/BRANCHEMENT_STREAMLIT.md) et
-[la revue des sources](docs/REVUE_SOURCES_OFFICIELLES.md).
-Ces changements ne prouvent pas la résolution d’une erreur réseau de l’API hébergée.
-
-## Actualités récentes
-
-Dans **Recherche**, saisir un sujet, choisir une période en mois ou jours
-puis cliquer **Rechercher**. Ce formulaire télécharge à chaque
-clic les inventaires officiels, sans clé ni appel IA. Il sélectionne la date de
-l'événement, indépendamment de la date initiale du texte, et affiche source,
-localisation dans l'export et date de collecte. Les 20 événements les plus récents
-sont affichés, avec un export JSON et les limites de couverture.
-
-Les actes datés des dossiers de la 17e législature viennent de l'Assemblée
-(y compris les étapes au Sénat enregistrées dans ces dossiers). L'export Sénat
-complète les dépôts et promulgations ; il ne couvre pas toutes les étapes.
-Une réunion inscrite n'est pas une preuve de sa tenue. La mise à jour du producteur
-peut être décalée. Aucun statut de droit en vigueur n'est inféré.
-
-Les résultats affichent directement les métadonnées officielles, avec filtres par
-type d'événement et tri chronologique. La synthèse IA est facultative et séparée.
-Le rapport Pipelex historique conserve son filtre de publication.
-Contrôle réel du 27 septembre 2026 : logement, du 29 août au 27 septembre inclus,
-13 événements trouvés, deux inventaires accessibles. Aucun appel IA pendant ce contrôle.
-
-## Flux de publication officiels branchés
-
-Le bloc Actualités consulte aussi les flux RSS du Sénat (textes, rapports et
-logement lorsque ce mot est recherché) et les listes quotidiennes de publications
-de l'Assemblée pour aujourd'hui et hier. Le téléchargement se fait au clic.
-Les listes Assemblée sont filtrées sur les amendements XML de la 17e législature ;
-au plus 12 détails distincts sont lus, les plus récemment publiés d'abord.
-La correspondance du sujet porte sur le dispositif et l'exposé sommaire.
-
-La date RSS ou celle de la liste est une mise en ligne/republication, pas une preuve
-de dépôt, d'adoption ou de promulgation. Les notices de flux restent distinctes des
-actes parlementaires. Pas de garantie de couverture de 30 jours par les flux :
-ils complètent les inventaires. Les indisponibilités et les limites sont affichées.
-Ces signaux restent dans le bloc sans IA, séparé du résumé Pipelex.
-
-Contrôle réel du 27 septembre : deux inventaires, trois RSS et deux listes quotidiennes
-accessibles. Pour logement, 13 événements au total ; aucun signal supplémentaire
-correspondant dans les flux consultés. Aucun résultat fictif ajouté, aucun appel IA.
-Validation : 262 tests et 28 sous-tests passent ; mypy valide les deux collecteurs.
-
-Références : https://www.senat.fr/flux-rss.html et
-https://data.assemblee-nationale.fr/foire-aux-questions .
-
-## Archives parlementaires
-
-La collecte couvre les 15e, 16e et 17e législatures de l’Assemblée selon la période,
-ainsi que le Sénat. Le repérage reste lexical, avec trois notices par institution
-et par collecte, puis quatre documents au maximum dans le rapport.
-Le mode local peut demander un complément de collecte sans recherche web payante.
-Un catalogue des notices est exportable sans IA :
-
-```powershell
-.\.venv\Scripts\python.exe -m backend.data_sources.catalogue --output data/local/catalogue-depuis-15e.json
-```
+Python · Streamlit · Pipelex · OpenAI — [Licence MIT](LICENSE)

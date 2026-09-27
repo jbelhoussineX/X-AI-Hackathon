@@ -70,8 +70,9 @@ def test_ui_only_collects_on_explicit_click(monkeypatch):
     result = {'topic': 'logement', 'start': '2026-09-21', 'end': '2026-09-27',
               'collected_at': '2026-09-27T12:00:00Z', 'datasets': [],
               'events': [], 'limitations': ['Test fictif.']}
+    monkeypatch.setenv('ENABLE_PIPELEX_CALLS', 'true')
     fetch = Mock(return_value=result)
-    monkeypatch.setattr('frontend.recent_activity.search_recent', fetch)
+    monkeypatch.setattr('frontend.recent_activity.agent_research', fetch)
     app = AppTest.from_string('from frontend.recent_activity import render\nrender()').run()
     fetch.assert_not_called()
     app.text_input(key='recent_topic').set_value('logement')
@@ -79,7 +80,7 @@ def test_ui_only_collects_on_explicit_click(monkeypatch):
     assert app.selectbox(key='recent_unit').value == 'mois'
     app.button[0].click().run()
     assert not app.exception
-    fetch.assert_called_once_with('logement', months=3)
+    fetch.assert_called_once_with(['logement'], months=3)
     assert 'Aucun événement' in app.info[0].value
     app.run()
     fetch.assert_called_once()
@@ -103,12 +104,13 @@ def test_filters_and_sort_preserve_corpus_without_new_calls(monkeypatch):
                   source_location='Test')
     result = dict(topic='logement', start='2026-06-27', end='2026-09-27',
                   collected_at='2026-09-27T12:00:00Z', datasets=[], limitations=['Test fictif.'],
-                  events=[dict(common, title='Ancien', category='debat', event_date='2026-07-01'),
-                          dict(common, title='Récent', category='procedure', event_date='2026-09-01')])
+                  events=[dict(common, title='Ancien', category='debat', event_date='2026-07-01', dossier_url='https://www.senat.fr/ancien.html'),
+                          dict(common, title='Récent', category='procedure', event_date='2026-09-01', dossier_url='https://www.senat.fr/recent.html')])
+    monkeypatch.setenv('ENABLE_PIPELEX_CALLS', 'true')
     fetch = Mock(return_value=result)
     generate = Mock(side_effect=AssertionError('Pas d’appel IA'))
-    monkeypatch.setattr('frontend.recent_activity.search_recent', fetch)
-    monkeypatch.setattr('frontend.recent_activity.build', generate)
+    monkeypatch.setattr('frontend.recent_activity.agent_research', fetch)
+    monkeypatch.setattr('backend.recent_brief.build', generate)
     app = AppTest.from_string('from frontend.recent_activity import render\nrender()').run()
     app.text_input(key='recent_topic').set_value('logement')
     app.button[0].click().run()

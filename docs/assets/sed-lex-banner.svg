@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="280" viewBox="0 0 1120 280" role="img" aria-labelledby="title desc">
+<title id="title">Sed Lex — Les textes publics, à portée de compréhension.</title>
+<desc id="desc">Projet du hackathon X-IA Rise of Agents X. Recherche documentaire citoyenne, sources officielles et intelligence artificielle.</desc>
+<rect width="1120" height="280" rx="20" fill="#f4f5ef"/>
+<path d="M830 0h270a20 20 0 0 1 20 20v240a20 20 0 0 1-20 20H830z" fill="#173e36"/>
+<text x="54" y="57" font-family="Arial,sans-serif" font-size="13" letter-spacing="3" fill="#326656">X-IA · RISE OF AGENTS X · 2026</text>
+<text x="50" y="146" font-family="Georgia,serif" font-size="76" fill="#173e36">Sed Lex</text>
+<text x="54" y="192" font-family="Arial,sans-serif" font-size="23" fill="#294f46">Les textes publics, à portée de compréhension.</text>
+<text x="54" y="232" font-family="Arial,sans-serif" font-size="14" fill="#456b61">SOURCES OFFICIELLES     /     RECHERCHE IA     /     RÉSUMÉS CLAIRS</text>
+<g fill="none" stroke="#c4d8bf" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<path d="M888 92q38-10 74 10v105q-36-20-74-10zM962 102q36-20 74-10v105q-38-10-74 10z"/>
+<path d="M904 116l40 8m-40 14 40 8m-40 14 27 5m49-41 38-8m-38 30 38-8m-38 30 27-6" opacity=".7"/>
+<path d="M909 65l52-20 51 20" stroke-width="2"/>
+</g>
+<circle cx="909" cy="65" r="6" fill="#e3bd77"/><circle cx="961" cy="45" r="6" fill="#e3bd77"/><circle cx="1012" cy="65" r="6" fill="#e3bd77"/>
+</svg>

@@ -67,7 +67,7 @@ def rss_events(payload, topic, start, end, url):
     events = []
     for item in root.findall('./channel/item')[:1000]:
         title, description = plain(item.findtext('title', '')), plain(item.findtext('description', ''))
-        if not title or not _terms(topic) <= _terms(title + ' ' + description):
+        if not title or (topic is not None and not _terms(topic) <= _terms(title + ' ' + description)):
             continue
         try:
             instant = parsedate_to_datetime(item.findtext('pubDate', ''))
@@ -114,7 +114,7 @@ def amendment_event(payload, topic, timestamp, url, list_url, line):
         raise ValueError('Amendement non reconnu.')
     content = plain(' '.join(root.findtext(path, '') for path in (
         './corps/contenuAuteur/dispositif', './corps/contenuAuteur/exposeSommaire')))
-    if not _terms(topic) <= _terms(content):
+    if topic is not None and not _terms(topic) <= _terms(content):
         return None
     return {'id': f'assemblee-publication:{uid}:{timestamp}', 'title': 'Amendement ' + root.findtext('./identification/numeroLong', uid),
             'event_date': timestamp[:10], 'event': 'Publication ou republication d’un amendement',
@@ -138,7 +138,7 @@ def collect(topic, start, end, *, transport=None):
     deadline = monotonic() + 35
     with httpx.Client(transport=transport, trust_env=False, follow_redirects=False) as client:
         feeds = list(SENATE_FEEDS)
-        if 'logement' in _terms(topic):
+        if topic is not None and 'logement' in _terms(topic):
             feeds.append('https://www.senat.fr/themes/rss/therss16.rss')
         for url in feeds:
             try:

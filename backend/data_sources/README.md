@@ -1,3 +1,8 @@
+> **Outils de collecte historique.** Cette page décrit les commandes du catalogue
+> et l’ancien rapport v1. La recherche Streamlit actuelle sélectionne ses documents
+> avec l’IA, sans filtre lexical. Voir les [sources du parcours livré](../../docs/ACTUALITES_RECENTES.md)
+> et le [fonctionnement de l’agent](../../docs/ANALYSE_AGENTIQUE.md).
+
 # Collecte officielle intégrée à Pipelex
 
 Code repris de la contribution `feat/pipelex-comparison`, commit `f5d79fc`,
@@ -5,7 +10,7 @@ avec adaptation au parcours local existant. Aucun compte Pipelex hébergé requi
 
 ## Utilisation
 
-Le mode réel de Streamlit utilise par défaut `POLITICAL_DATA_SOURCE=official`.
+L’ancien parcours de rapport utilise par défaut `POLITICAL_DATA_SOURCE=official`.
 Aucune clé n'est nécessaire pour les exports publics ; `OPENAI_API_KEY` reste
 nécessaire pour les deux appels de modèle (évaluation des manques et rédaction).
 Une collecte vide ne déclenche aucun appel de modèle. Aucun appel web OpenAI

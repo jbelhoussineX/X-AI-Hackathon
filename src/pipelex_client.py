@@ -64,12 +64,21 @@ VALIDATION_REASONS = {
 DIAGNOSTIC_VALUES: dict[str, set[str | int]] = {
     'reason': set(VALIDATION_REASONS),
     'field': {f'{group}.{name}' if group else name
-              for group, fields in REQUIRED_TEXT_FIELDS.items() for name in fields},
-    'stage': {'collecter', 'evaluer', 'completer', 'rediger'},
+              for group, fields in REQUIRED_TEXT_FIELDS.items() for name in fields} | {
+                  'queries', 'event_ids', 'coverage', 'relevant_sources', 'gaps', 'followup_query',
+                  'items', 'items.source_id', 'items.quote_id', 'items.summary',
+                  'items.relevance', 'items.uncertainty', 'limitations'},
+    'constraint': {'missing', 'list_type', 'string_type', 'too_long', 'too_short',
+                   'string_too_short', 'string_too_long', 'literal_error', 'extra_forbidden',
+                   'value_error', 'json_invalid'},
+    'stage': {'collecter', 'evaluer', 'completer', 'rediger',
+              'recent_agent.plan', 'recent_agent.select', 'recent_agent.evaluate', 'recent_agent.summarize'},
     'http_status': {400, 401, 403, 404, 408, 409, 422, 429, 500, 502, 503, 504},
     'type': {'BadRequestError', 'NotFoundError', 'UnprocessableEntityError', 'InternalServerError',
              'AuthenticationError', 'PermissionDeniedError', 'RateLimitError', 'APIConnectionError',
-             'APITimeoutError', 'APIStatusError', 'TypeError', 'ValueError', 'KeyError', 'AttributeError'},
+             'APITimeoutError', 'APIStatusError', 'TypeError', 'ValueError', 'KeyError', 'AttributeError',
+             'IncompleteOutputException', 'ValidationError', 'JSONDecodeError',
+             'ResponseParsingError', 'InstructorRetryException'},
     'code': {'unsupported_parameter', 'unsupported_value', 'invalid_value', 'invalid_type',
              'invalid_request_error', 'model_not_found', 'invalid_api_key', 'invalid_json_schema',
              'context_length_exceeded', 'rate_limit_exceeded', 'insufficient_quota',
@@ -97,7 +106,7 @@ def failure_message(code: object, diagnostic: object = None) -> str:
         message += ' Motif : ' + VALIDATION_REASONS[reason]
     if details:
         labels = {'stage': 'étape', 'http_status': 'HTTP', 'type': 'type', 'code': 'code',
-                  'param': 'paramètre', 'field': 'champ'}
+                  'param': 'paramètre', 'field': 'champ', 'constraint': 'contrainte'}
         message += ' Diagnostic : ' + ', '.join(f'{labels[key]}={value}' for key, value in details.items()) + '.'
     return message
 

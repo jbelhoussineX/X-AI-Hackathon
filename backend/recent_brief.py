@@ -4,13 +4,14 @@ import hashlib
 import json
 import os
 from datetime import datetime, timezone
+from itertools import zip_longest
 
 from backend.clients import require_enabled
 from backend.data_sources.pages import collect_sources
 from backend.data_sources.debates import passages
 from backend.source_verification import normalize, allowed_url
 from backend.generated.recent_brief.models import Request, Brief
-from backend.pipelex_recent import summarize
+from backend.pipelex_recent import summarize, RecentProviderError
 from pydantic import ValidationError
 
 
@@ -25,9 +26,9 @@ def check_freshness(result):
             raise ValueError
         age = (datetime.now(timezone.utc) - collected).total_seconds()
     except (ValueError, TypeError, KeyError):
-        raise BriefError("Date de collecte invalide. Clique sur Consulter les actualités officielles. Aucun appel IA lancé.") from None
+        raise BriefError("Date de collecte invalide. Clique sur Rechercher. Aucun appel IA lancé.") from None
     if age > 3600:
-        raise BriefError("Collecte de plus d’une heure. Clique sur Consulter les actualités officielles pour l’actualiser. Aucun appel IA lancé.")
+        raise BriefError("Collecte de plus d’une heure. Clique sur Rechercher pour l’actualiser. Aucun appel IA lancé.")
     if age < -300:
         raise BriefError("Date de collecte dans le futur. Vérifie l’horloge puis actualise la collecte. Aucun appel IA lancé.")
 
@@ -52,21 +53,48 @@ def quote_options(text):
     return quotes
 
 
-def prepare(result, *, transport=None):
+def _matching_passages(page, topics):
+    """Match each topic separately and share the three-passage budget."""
+    texts = page['pdf_pages'] or [page['text']]
+    per_topic = [[chunk for text in texts for chunk in passages(text, topic, limit=1)][:3]
+                 for topic in topics]
+    selected = []
+    for candidates in zip_longest(*per_topic):
+        for chunk in candidates:
+            if chunk and chunk not in selected:
+                selected.append(chunk)
+                if len(selected) == 3:
+                    return selected
+    return selected
+
+
+def prepare(result, *, transport=None, semantic=False):
     sources, limits = [], list(result['limitations'])
+    topics = result.get('topics') or [result['topic']]
     selected = result['events'][:6]
     urls = list(dict.fromkeys(e['dossier_url'] for e in selected if not e.get('content_passages')))
-    pages, _, issues = collect_sources(urls, transport=transport) if urls else ([], {}, [])
+    collection_options = {'follow_legislative': True} if semantic else {}
+    pages, _, issues = collect_sources(urls, transport=transport, **collection_options) if urls else ([], {}, [])
     limits.extend(issues)
     by_url = {p['url']: p for p in pages}
+    linked = {p['dossier_url']: p for p in pages if p.get('dossier_url')}
     for index, event in enumerate(selected):
         if not result['start'] <= event['event_date'] <= result['end'] or not allowed_url(event['dossier_url']):
             raise BriefError('Événement hors période ou source non autorisée. Actualise la collecte. Aucun appel IA lancé.')
         chunks = event.get('content_passages', [])
-        page = by_url.get(event['dossier_url'])
+        # Prefer the actual linked text to a procedural notice for explaining measures.
+        page = linked.get(event['dossier_url']) or by_url.get(event['dossier_url'])
         if page:
-            chunks = [chunk for text in (page['pdf_pages'] or [page['text']])
-                      for chunk in passages(text, result['topic'], limit=1)][:3]
+            if semantic:
+                texts = page['pdf_pages'] or [page['text']]
+                # Keep PDF pages separate: a citation must never join two pages.
+                if len(texts) > 1:
+                    indices = sorted({0, len(texts) // 2, len(texts) - 1})
+                    chunks = [chunk for i in indices for chunk in passages(texts[i], None, limit=1)]
+                else:
+                    chunks = passages(texts[0], None)
+            else:
+                chunks = _matching_passages(page, topics)
         for part, text in enumerate(chunks[:3]):
             text = normalize(text)[:4000]
             if len(text) < 25:
@@ -75,7 +103,9 @@ def prepare(result, *, transport=None):
                             'title': event['title'], 'category': event['category'],
                             'event_label': event.get('event'), 'recorded_decision': event.get('decision'),
                             'event_date': event['event_date'], 'publication_date': event.get('publication_date'),
-                            'date_kind': event['date_kind'], 'url': event['dossier_url'],
+                            'date_kind': event['date_kind'], 'url': page['url'] if page else event['dossier_url'],
+                            'dossier_url': event['dossier_url'],
+                            'source_role': 'linked_legislative_text' if page and page.get('dossier_url') else 'event_source',
                             'retrieved_at': page['retrieved_at'] if page else event['retrieved_at'],
                             'text': text, 'quotes': quote_options(text), 'sha256': hashlib.sha256(text.encode()).hexdigest()})
         if not chunks:
@@ -139,4 +169,6 @@ def build(result, *, transport=None):
             output = run_local(request)
     except ValidationError:
         raise BriefError('Le fournisseur a retourné un format de synthèse invalide. Des crédits peuvent avoir été consommés ; aucune relance automatique.') from None
+    except RecentProviderError as exc:
+        raise BriefError(str(exc)) from None
     return verify(output, corpus)

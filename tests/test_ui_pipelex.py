@@ -26,7 +26,8 @@ def test_app_navigation_and_demo_never_call_service(monkeypatch):
     assert app.radio(key='b_page').options == ['Recherche', 'Historique', 'Favoris', 'Mon profil', 'Aide']
     app.radio(key='b_page').set_value('Mon profil').run()
     assert not app.exception
-    assert any('Mode invité' in message.value for message in app.info)
+    assert any(button.label == 'Enregistrer mon profil' for button in app.button)
+    assert not any('invité' in message.value.lower() for message in app.info)
     app.radio(key='b_page').set_value('Aide').run()
     assert not app.exception
     service.assert_not_called()

@@ -10,11 +10,14 @@ class GuestStore:
     def __init__(self, state):
         self.state = state
         self.data = state.setdefault('profile_guest_data', {
-            'profile': {'display_name': 'Invité', 'email': '', 'topics': [], 'recent_months': 3},
+            'profile': {'display_name': 'Mon profil', 'email': '', 'topics': [], 'recent_months': 3},
             'answers': {}, 'history': [], 'favorite': []})
 
     def get_or_create(self, identity):
-        return deepcopy(self.data['profile'])
+        profile = deepcopy(self.data['profile'])
+        if profile['display_name'] == 'Invité':
+            profile['display_name'] = 'Mon profil'
+        return profile
 
     def update(self, identity, *, display_name, topics, recent_months):
         name, topics, months = _preferences(display_name, topics, recent_months)

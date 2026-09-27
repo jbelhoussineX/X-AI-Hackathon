@@ -1,9 +1,0 @@
-Lis AGENTS.md et CONTRACT.md. Voici la commande que j'ai exécutée : [COMMANDE].
-Voici le résultat attendu : [ATTENDU]. Voici l'erreur, sans secret : [ERREUR].
-Le périmètre qui m'appartient est : [FICHIERS].
-Cherche une cause testable ; propose la plus petite correction. Ne réécris pas l'architecture,
-ne supprime pas de tests et n'ajoute pas de nouveau service. Ne lis pas .env.
-Exécute un test hors ligne reproduisant le problème avant/après, lorsque possible.
-Si la correction dépasse mes fichiers, indique à quel responsable la transmettre.
-N'effectue pas de requête API réelle ou de commande Git destructive sans autorisation.
-Si une information de mon compte manque, demande un statut ou une capture expurgée, pas une clé.

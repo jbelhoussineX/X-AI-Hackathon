@@ -59,6 +59,10 @@ def dated_links(body, base):
 def passages(text, topic, limit=3):
     """Keep separate contiguous windows; never join them into a fake quotation."""
     text = normalize(text)
+    if topic is None:
+        # Contiguous samples across the page, with no lexical relevance decision.
+        starts = sorted({0, max(0, len(text) // 2 - 1200), max(0, len(text) - 2400)})
+        return [text[start:start + 2400] for start in starts if text[start:start + 2400]][:limit]
     terms = _terms(topic)
     result = []
     for start in range(0, len(text), 1600):
@@ -76,6 +80,9 @@ def collect(topic, start, end, *, transport=None):
               'comptes rendus analytiques au Sénat. Couverture partielle, hors commissions.',
               'Date de séance distincte de la publication (non confirmée). Passages sélectionnés '
               'par mots-clés ; un compte rendu peut être corrigé après publication.']
+    if topic is None:
+        limits[-1] = ('Date de séance distincte de la publication. Trois fenêtres par compte rendu, '
+                      'sans filtre lexical : des sujets abordés ailleurs dans le texte peuvent manquer.')
     with httpx.Client(transport=transport, trust_env=False, follow_redirects=False) as client:
         for provider, index in INDEXES.items():
             deadline = monotonic() + 25
@@ -120,7 +127,7 @@ def collect(topic, start, end, *, transport=None):
                                    'source_url': url, 'dossier_url': url, 'source_location': 'Passages du compte rendu',
                                    'retrieved_at': meta['retrieved_at'], 'dataset_sha256': meta['sha256'],
                                    'content_passages': chunks,
-                                   'description': 'Passages pertinents retrouvés dans le compte rendu ; aucune adoption déduite.'})
+                                   'description': 'Passages collectés dans le compte rendu ; aucune adoption déduite.'})
                 except (httpx.HTTPError, ValueError, UnicodeError):
                     limits.append('Compte rendu non exploitable : ' + url)
     return events, datasets, limits

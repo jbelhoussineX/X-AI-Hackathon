@@ -50,10 +50,36 @@ async def execute(request: dict) -> dict:
 
 def exception_chain(exc: BaseException):
     visited: set[int] = set()
-    while exc is not None and id(exc) not in visited:
+    pending = [exc]
+    while pending and len(visited) < 64:
+        exc = pending.pop()
+        if not isinstance(exc, BaseException) or id(exc) in visited:
+            continue
         visited.add(id(exc))
         yield exc
-        exc = exc.__cause__ or exc.__context__
+        # Instructor may store the original failure outside __cause__.
+        attempts = getattr(exc, 'failed_attempts', None)
+        if isinstance(attempts, (list, tuple)):
+            pending.extend(getattr(attempt, 'exception', None) for attempt in attempts[:8])
+        pending.extend([exc.__context__, exc.__cause__])
+
+
+def output_failure_reason(exc: BaseException):
+    """Read status metadata only; never return response content or raw errors."""
+    completion = getattr(exc, 'last_completion', None)
+    if getattr(completion, 'status', None) == 'incomplete':
+        reason = getattr(getattr(completion, 'incomplete_details', None), 'reason', None)
+        return reason if reason in ('max_output_tokens', 'content_filter') else 'response_incomplete'
+    name = type(exc).__name__
+    if name == 'IncompleteOutputException':
+        return 'max_output_tokens'
+    if name == 'ValidationError':
+        return 'report_schema'
+    if name == 'JSONDecodeError':
+        return 'invalid_json'
+    if name == 'ResponseParsingError':
+        return 'report_schema'
+    return None
 
 
 def error_code(exc: BaseException) -> str:
@@ -65,7 +91,11 @@ def error_code(exc: BaseException) -> str:
             return exc.code
         if isinstance(exc, ReportError):
             return 'format'
+        if output_failure_reason(exc):
+            return 'format'
         name = type(exc).__name__
+        if name == 'InstructorRetryException':
+            fallback = 'format'
         if name in ('AuthenticationError', 'PermissionDeniedError', 'InferenceBackendCredentialsError'):
             return 'credentials'
         if name == 'RateLimitError':
@@ -91,6 +121,7 @@ def error_code(exc: BaseException) -> str:
 
 def error_diagnostic(exc: BaseException) -> dict:
     from src.pipelex_client import safe_diagnostic
+    from pydantic import ValidationError
     details = {}
     for cause in exception_chain(exc):
         candidate = {
@@ -99,11 +130,22 @@ def error_diagnostic(exc: BaseException) -> dict:
             'type': type(cause).__name__,
             'code': getattr(cause, 'code', None),
             'param': getattr(cause, 'param', None),
-            'reason': getattr(cause, 'reason', None),
+            'reason': output_failure_reason(cause) or getattr(cause, 'reason', None),
             'field': getattr(cause, 'field', None),
         }
         for key, value in safe_diagnostic(candidate).items():
             details.setdefault(key, value)
+        if isinstance(cause, ValidationError):
+            for issue in cause.errors(include_url=False, include_input=False, include_context=False):
+                # Only fixed field paths and error codes may cross the worker boundary.
+                # No arbitrary field name, rejected value, message or context is exposed.
+                location = issue.get('loc', ())
+                field = '.'.join(part for part in location if isinstance(part, str))
+                validation = safe_diagnostic({'field': field, 'constraint': issue.get('type')})
+                if 'field' in validation:
+                    for key, value in validation.items():
+                        details.setdefault(key, value)
+                    break
     return details
 
 

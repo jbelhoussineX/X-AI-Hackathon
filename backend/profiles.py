@@ -180,7 +180,9 @@ class ProfileStore:
         timestamp = _now()
         with self._connect() as db:
             db.execute("""
-                INSERT INTO profiles VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO profiles
+                    (user_id, email, display_name, topics_json, recent_months, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(user_id) DO UPDATE SET
                     email=excluded.email,
                     updated_at=CASE WHEN profiles.email != excluded.email
@@ -197,7 +199,9 @@ class ProfileStore:
         timestamp = _now()
         with self._connect() as db:
             db.execute("""
-                INSERT INTO profiles VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO profiles
+                    (user_id, email, display_name, topics_json, recent_months, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(user_id) DO UPDATE SET
                     email=excluded.email, display_name=excluded.display_name,
                     topics_json=excluded.topics_json, recent_months=excluded.recent_months,

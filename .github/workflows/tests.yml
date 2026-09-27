@@ -1,0 +1,29 @@
+name: Tests hors ligne
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHON_DOTENV_DISABLED: "1"
+      DO_NOT_TRACK: "1"
+      ENABLE_PIPELEX_CALLS: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Installer
+        run: python -m pip install -r requirements-ui.txt
+      - name: Vérifier les dépendances
+        run: python -m pip check
+      - name: Tester sans fournisseur réel
+        run: python -m pytest -q

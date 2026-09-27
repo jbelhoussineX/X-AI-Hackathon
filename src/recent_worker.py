@@ -12,12 +12,16 @@ from backend.method_bundle import ROOT, read_bundle
 
 
 async def execute(request: Request) -> Brief:
+    return await execute_method(request, read_bundle('recent_brief'), 'recent_brief.summarize', Brief)
+
+
+async def execute_method(request, contents, pipe_code, output_type):
+    """Run an application-selected method; callers never accept a model-provided path."""
     require_enabled('PIPELEX')
     if os.environ.get('PIPELEX_FORCE_DRY_RUN_MODE', '').lower() in ('1', 'true', 'yes'):
         raise ValueError('Génération fictive interdite.')
     from pipelex.pipelex import Pipelex
     from pipelex.pipeline.runner import PipelexMTHDSProtocol
-    contents = read_bundle('recent_brief')
     Pipelex.make(config_dir=ROOT / '.pipelex', library_dirs=[], config_overrides={
         'inference': {'transport_max_retries': 0, 'model_deck': {'is_model_fallback_enabled': False},
                       'llm': {'schema_reask_max_attempts': 1}},
@@ -27,10 +31,10 @@ async def execute(request: Request) -> Brief:
     })
     try:
         runner = PipelexMTHDSProtocol(library_dirs=[])
-        result = await runner.execute(pipe_code='recent_brief.summarize', mthds_contents=contents,
-                                      inputs={'request': {'concept': 'recent_brief.Request',
+        result = await runner.execute(pipe_code=pipe_code, mthds_contents=contents,
+                                      inputs={'request': {'concept': pipe_code.split('.')[0] + '.Request',
                                                           'content': request.model_dump()}})
-        return Brief.model_validate(result.pipe_output.main_stuff.content.model_dump())
+        return output_type.model_validate(result.pipe_output.main_stuff.content.model_dump())
     finally:
         Pipelex.teardown_if_needed()
 

@@ -119,6 +119,7 @@ def test_local_real_pipelex_graph_with_mock_inference(monkeypatch):
 
 def test_hosted_typed_call_uses_current_bundle(monkeypatch):
     from backend.pipelex_recent import summarize
+    monkeypatch.setenv('PIPELEX_API_KEY', 'offline-pipelex-placeholder')
     client = AsyncMock()
     client.__aenter__.return_value = client
     client.start_and_wait.return_value = SimpleNamespace(main_stuff={'items': [], 'limitations': []})
@@ -128,31 +129,27 @@ def test_hosted_typed_call_uses_current_bundle(monkeypatch):
     assert client.start_and_wait.call_args.kwargs['pipe_code'] == 'recent_brief.summarize'
 
 
-def test_ui_requires_consent_and_does_not_repeat_generation(monkeypatch):
+def test_ui_requires_click_and_does_not_repeat_generation(monkeypatch):
     from streamlit.testing.v1 import AppTest
     data = result()
     data['datasets'] = []
     data['events'][0].update(event='Débat', decision=None, provider='assemblee-debats',
                              source_url=URL, source_location='Compte rendu')
-    collect_mock = Mock(return_value=data)
-    generate = Mock(return_value=verify(Brief(items=[], limitations=['Fictif pour test.']), prepare(data)))
-    monkeypatch.setattr('frontend.recent_activity.search_recent', collect_mock)
-    monkeypatch.setattr('frontend.recent_activity.build', generate)
-    app = AppTest.from_string('from frontend.recent_activity import render\nrender(allow_ai=True)').run()
+    generate = Mock(return_value=data)
+    monkeypatch.setattr('frontend.recent_activity.agent_research', generate)
+    app = AppTest.from_string('from frontend.recent_activity import render\nrender()').run()
     generate.assert_not_called()
-    app.text_input(key='recent_topic').set_value('logement')
+    app.text_input(key='recent_topic').set_value('logement').run()
+    generate.assert_not_called()
     app.button[0].click().run()
-    assert app.button(key='recent_summarize').disabled
-    app.checkbox(key='recent_consent').check().run()
-    generate.assert_not_called()
-    app.button(key='recent_summarize').click().run()
     assert not app.exception
     generate.assert_called_once()
     app.run()
     generate.assert_called_once()
+    app.session_state['recent_brief'] = {'items': []}
     app.button[0].click().run()
-    with pytest.raises(KeyError):
-        app.session_state['recent_brief']
+    assert generate.call_count == 2
+    assert 'recent_brief' not in app.session_state
 
 
 @pytest.mark.parametrize('bad, message', [('invented', 'identifiant de citation absent'), ('unknown', 'référence absente')])
@@ -180,21 +177,18 @@ def test_stale_rejection_happens_before_any_network(monkeypatch):
 
 def test_error_persists_in_ui_without_retry(monkeypatch):
     from streamlit.testing.v1 import AppTest
-    from backend.recent_brief import BriefError
-    data = result(); data['datasets'] = []
-    data['events'][0].update(event='Débat', decision=None, provider='assemblee-debats', source_url=URL, source_location='Compte rendu')
-    monkeypatch.setattr('frontend.recent_activity.search_recent', Mock(return_value=data))
-    generate = Mock(side_effect=BriefError('La citation ne se retrouve pas dans le passage.'))
-    monkeypatch.setattr('frontend.recent_activity.build', generate)
-    app = AppTest.from_string('from frontend.recent_activity import render\nrender(allow_ai=True)').run()
+    from backend.recent_agent import AgentError
+    generate = Mock(side_effect=AgentError('La citation ne se retrouve pas dans le passage.'))
+    monkeypatch.setattr('frontend.recent_activity.agent_research', generate)
+    app = AppTest.from_string('from frontend.recent_activity import render\nrender()').run()
     app.text_input(key='recent_topic').set_value('logement')
     app.button[0].click().run()
-    app.checkbox(key='recent_consent').check().run()
-    app.button(key='recent_summarize').click().run()
     assert 'citation' in app.error[0].value
     app.run()
     assert 'citation' in app.error[0].value
     generate.assert_called_once()
+    generate.side_effect = None
+    generate.return_value = dict(result(), datasets=[], events=[])
     app.button[0].click().run()
     assert not app.error
 

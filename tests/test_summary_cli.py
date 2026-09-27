@@ -9,7 +9,7 @@ from unittest.mock import patch
 from backend.summary_cli import main
 from backend.source_verification import SourceVerification
 
-REPORT = Path(__file__).resolve().parents[1] / 'methods/political_summary/test_report.json'
+REPORT = Path(__file__).resolve().parents[1] / 'tests/fixtures/political_summary/report.json'
 
 
 class SummaryCliTests(unittest.TestCase):

@@ -543,7 +543,7 @@ def afficher_resultat(item: dict, prefixe: str = "current") -> None:
 def page_recherche(mode: str) -> None:
     st.title("Actualités politiques")
     from frontend.recent_activity import render
-    render(allow_ai=mode == 'pipelex')
+    render()
 
 
 def recherche_documents(mode: str) -> None:
@@ -652,30 +652,28 @@ def page_aide() -> None:
     titre_page("MODE D'EMPLOI", "Comprendre la recherche et ses limites.", "Des résultats sourcés à relire, sans recommandation politique.")
     with st.container(border=True):
         st.subheader("Comment rechercher ?")
-        st.write("Saisissez un sujet et choisissez une période : trois mois par défaut. Consultez les événements, filtrez-les par catégorie et ouvrez leurs sources officielles.")
+        st.write("Dans Recherche, sélectionne tes sujets dans les bulles et complète si besoin la ligne Autres sujets, en les séparant par des virgules. Choisis une période puis clique sur Rechercher.")
         st.subheader("Comment obtenir une synthèse ?")
-        st.write("Choisissez « Avec synthèse » dans le menu, puis autorisez et lancez la synthèse depuis les résultats. Cette action utilise des crédits du fournisseur. Aucun appel IA n’est lancé automatiquement.")
-        st.caption("Les résultats restent dans la session. Exportez-les pour les conserver. La recherche s’actualise à votre demande ; aucune surveillance automatique n’est active.")
+        st.write("Cliquez sur Rechercher pour lancer la recherche IA et sa synthèse. L’agent sélectionne les documents selon leur sens parmi 120 notices récentes au maximum, lit les passages, évalue les preuves et résume les nouveautés. Il peut explorer une fois les notices restantes si des informations manquent. Quatre étapes IA maximum, avec des crédits fournisseur.")
         st.subheader("Comment retrouver mes sujets ?")
-        st.write("La connexion Google est facultative. Dans Mon profil, enregistre tes sujets et ta période préférée. Choisir un sujet prépare le formulaire ; clique ensuite sur Rechercher pour consulter les actualités.")
-        st.caption("La collecte officielle parcourt les inventaires du Sénat et de l’Assemblée, puis transmet un corpus limité au modèle. Les dates, les résumés et les versions doivent être relus.")
+        st.write("Choisis tes sujets directement dans Recherche, avec les bulles ou le champ libre. Mon profil contient ta situation et ta période préférée.")
     with st.expander("Comprendre les sources et les dates"):
-        st.write("La période filtre les événements datés : étapes législatives, publications, amendements et débats. Un texte ancien peut avoir une évolution récente. La date d’une séance ou d’une étape est distincte de la date de publication. La collecte est partielle : consultez la couverture et les limites sous les résultats.")
+        st.write("La période filtre les événements datés : étapes législatives, publications, amendements et débats. Un texte ancien peut avoir une évolution récente. La date d’une séance ou d’une étape est distincte de la date de publication. La collecte est partielle ; les liens permettent de consulter les sources originales.")
         st.write("Une source citée n'est pas automatiquement une source vérifiée. L'étape de procédure, le résumé et le contact peuvent avoir des preuves différentes.")
         st.write("La date d'exécution indique quand la requête s'est terminée. Elle ne prouve pas que chaque page a été revérifiée indépendamment.")
     with st.expander("Données et confidentialité"):
-        st.write("Les résultats restent dans cette session. Si tu demandes une synthèse IA, le sujet et les sources sont transmis au fournisseur configuré (Pipelex hébergé ou OpenAI avec Pipelex local). Aucun profil politique n'est construit.")
-        st.write("Avec Google, Mon profil conserve localement ton nom d’affichage, ton adresse vérifiée, tes sujets choisis et ta période préférée. Tu peux modifier, exporter ou supprimer ce profil. Ton identité Google n'est pas jointe aux recherches IA.")
-        st.write("Les exports restent sous ton contrôle. Ne saisis pas d'informations sensibles. Aucune clé API ne doit être saisie dans cette interface.")
+        st.write("Le profil, l’historique et les favoris sont conservés dans cette session. Une nouvelle session ou un redémarrage du serveur peut les effacer. L’historique couvre les sept derniers jours.")
+        st.write("Le questionnaire est facultatif. Ses réponses renseignées sont transmises à l’IA pour adapter les résumés et classer les textes selon leur pertinence pour votre situation. Le nom est exclu, tout comme les réponses « Autre » ou non renseignées. Aucun profil politique n’est construit. Modifier le profil s’applique à la prochaine recherche ; l’historique conserve l’analyse d’origine.")
+        st.write("Ne saisis pas d'informations sensibles. Aucune clé API ne doit être saisie dans cette interface.")
     with st.expander("Effacer les données de cette session"):
-        st.write("Cela efface les résultats, synthèses et anciens éléments de session ici. Ton profil enregistré, les fichiers exportés et les données chez un fournisseur sont conservés.")
+        st.write("Cela efface les résultats, synthèses et anciens éléments de session ici. Les préférences du profil et les favoris de cette session sont conservés.")
         if st.button("Confirmer l'effacement de la session", key="b_clear_session"):
             st.session_state["b_last"] = None
             st.session_state["b_history"] = []
             st.session_state["b_watches"] = []
             st.session_state["b_error"] = None
             for key in ("recent_result", "recent_brief", "recent_brief_error",
-                        "recent_categories", "recent_order", "recent_consent"):
+                        "recent_categories", "recent_order", "recent_consent", "recent_agent_error", "recent_agent_consent"):
                 st.session_state.pop(key, None)
             # Conserver le compteur d'appels : effacer la session n'est pas un nouveau budget.
             st.success("Résultats, synthèses et anciens éléments de session effacés.")
@@ -687,7 +685,7 @@ def main() -> None:
         raise SystemExit("Streamlit manque. Installe requirements-ui.txt, puis lance : python -m streamlit run interface_b.py")
     st.set_page_config(page_title=NOM_APPLICATION, page_icon="📑", layout="wide", initial_sidebar_state="expanded")
     st.markdown(STYLE, unsafe_allow_html=True)
-    from frontend.profile import initialize_identity, sidebar_account, render_profile
+    from frontend.profile import initialize_identity, render_profile
     identity, identity_error = initialize_identity()
     initialiser_etat(st.session_state)
     if st.session_state["b_page"] not in ("Recherche", "Historique", "Favoris", "Mon profil", "Aide"):
@@ -695,13 +693,10 @@ def main() -> None:
     with st.sidebar:
         st.markdown('<div class="brand">sed <em>lex.</em></div>', unsafe_allow_html=True)
         st.divider()
-        sidebar_account(identity, identity_error)
-        st.divider()
         st.radio("Navigation", ["Recherche", "Historique", "Favoris", "Mon profil", "Aide"], key="b_page", label_visibility="collapsed")
         st.divider()
-        st.radio("Synthèse IA", ["demo", "pipelex"], key="b_mode",
-                 format_func=lambda x: "Sans synthèse" if x == "demo" else "Avec synthèse")
-        mode = st.session_state["b_mode"]
+        mode = "pipelex"
+        st.session_state["b_mode"] = mode
         st.divider()
         st.caption("Sources officielles\n\nAssemblée nationale · Sénat")
     # Un message d'erreur ou résultat de l'autre mode ne doit pas sembler appartenir au mode actuel.
@@ -718,7 +713,6 @@ def main() -> None:
         render_library(identity, 'history' if page == 'Historique' else 'favorite')
     else:
         page_aide()
-    st.caption("Sed Lex · Sources officielles · Recherche à la demande")
 
 
 if __name__ == "__main__":

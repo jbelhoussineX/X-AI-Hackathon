@@ -1,8 +1,10 @@
 # Données récentes et synthèse — 27 septembre 2026
 
-Dans Recherche, saisir un sujet dans **Actualités récentes**, choisir la période (3 mois calendaires par défaut, 1 à 12 mois ou 1 à 90 jours),
-puis cliquer **Consulter les actualités officielles**. La collecte se fait au clic,
-sans clé ni IA. Les résultats précédents et leur synthèse sont effacés à chaque
+Dans Recherche, sélectionner des sujets ou utiliser **Autres sujets**, choisir la période (période du profil, 1 à 12 mois ou 1 à 90 jours),
+puis cliquer **Rechercher**. Le clic lance le [parcours agentique](ANALYSE_AGENTIQUE.md),
+qui sélectionne les notices selon leur sens, évalue, complète si utile et résume avec les crédits fournisseur.
+L'interface ne propose plus de mode sans IA ni de génération séparée après la collecte.
+Les résultats précédents et leur synthèse sont effacés à chaque
 nouvelle collecte pour ne pas afficher une ancienne réponse sous un nouveau sujet.
 
 ## Sources utilisées
@@ -34,7 +36,11 @@ La date de récupération ne remplace jamais une date de publication ou de séan
 Dates inconnues et futures exclues. Le bloc affiche la dernière séance repérée dans
 chaque index : un index ancien ou vide ne prouve pas l'absence de débats.
 
-Au plus 20 événements affichés. Première page de chaque index de débats, six séances
+Au plus 120 notices candidates, réparties entre les fournisseurs. L’IA sélectionne
+jusqu’à six événements, puis éventuellement six autres dans les notices restantes.
+La synthèse finale retient au plus six événements ; les répétitions et les étapes
+d’un même dossier sont regroupées à l’affichage.
+Première page de chaque index de débats, six séances
 au plus par chambre, 25 secondes de budget réseau par chambre, 4 Mo par page.
 Les RSS ne garantissent pas une couverture historique complète. Amendements :
 listes d'aujourd'hui et d'hier, 12 fichiers au plus. Les pannes et troncatures sont
@@ -42,36 +48,40 @@ signalées, sans recherche web de remplacement et sans contenu fictif.
 
 ## Synthèse Pipelex
 
-Après collecte, cocher l'autorisation de crédits puis cliquer
-**Synthétiser les nouveautés avec Pipelex**. `ENABLE_PIPELEX_CALLS=true` est requis.
-`PIPELEX_EXECUTION_MODE=hosted` utilise l'API Pipelex ; `local` exécute la même
-méthode PipeLLM avec le moteur local, configuré pour OpenAI. Aucun changement
-automatique de fournisseur. La méthode demande `gpt-4o-mini`.
+La synthèse fait désormais partie du parcours lancé par **Rechercher**.
+`ENABLE_PIPELEX_CALLS=true` est requis. `PIPELEX_EXECUTION_MODE=hosted` utilise
+l'API Pipelex ; `local` exécute les étapes PipeLLM avec OpenAI. Aucun changement
+automatique de fournisseur. Le modèle est `gpt-4o-mini`.
 
-Six premiers événements affichés au maximum. Les pages liées sont relues si le
-collecteur ne dispose pas déjà du texte (débat/amendement). Trois passages par
-événement au maximum, 4 000 caractères chacun. Une source illisible ou sans passage
-pertinent n'alimente pas la synthèse. Un corpus vide ne déclenche aucun appel IA.
-Une collecte de plus d'une heure doit être actualisée avant génération.
+L’IA choisit jusqu’à six événements parmi 120 notices datées, sans filtre lexical.
+Leurs passages sont ensuite préparés pour l’évaluation.
+Les pages liées sont relues si le collecteur ne dispose pas déjà du texte.
+Trois passages par événement au maximum, 4 000 caractères chacun. Une source
+illisible ou sans passage pertinent n'alimente pas la synthèse. Sans corpus final
+exploitable, la synthèse n'est pas appelée ; préparation et évaluation peuvent
+avoir déjà consommé des crédits. Voir les budgets et le complément dans
+[le guide agentique](ANALYSE_AGENTIQUE.md).
 
-Une méthode, `recent_brief.summarize`, produit des résumés avec identifiants de
-passage et de citation. Les citations sont découpées par le code dans les passages
-collectés ; le modèle sélectionne un identifiant et ne recopie aucun extrait.
-Le texte affiché provient directement du corpus, ce qui évite les erreurs de recopie. Le code refuse les identifiants inconnus, les citations absentes
-du passage. Les répétitions du même événement sont retirées après vérification,
-avec un compteur visible ; la première synthèse vérifiée est conservée. Liens, catégories et dates affichés viennent
-du collecteur, pas du modèle. La présence d'un extrait ne certifie pas la fidélité
-de la synthèse : relecture humaine nécessaire. Pas de relance automatique ; un délai
-local ne garantit pas l'annulation d'une génération distante.
+La méthode `recent_agent.summarize` sélectionne des identifiants de passage et
+citation. Les citations sont découpées par le code dans les passages collectés.
+Les extraits ne sont plus affichés, mais leur présence dans le corpus reste
+contrôlée. Le code refuse les identifiants inconnus et citations absentes du
+passage. Les répétitions d'un événement sont retirées après vérification.
+Liens, titres, catégories et dates affichés viennent du collecteur.
+La présence d'un extrait ne certifie pas la fidélité de la synthèse : relecture
+humaine nécessaire. Pas de relance automatique ; un délai local ne garantit pas
+l'annulation d'une génération distante. La méthode historique
+`recent_brief.summarize` reste disponible dans le backend, hors interface.
 
 Le contrat législatif v1 reste inchangé. La synthèse récente est un résultat séparé,
-exportable en JSON depuis le même bloc. Pas de sauvegarde durable ni de tâche
-programmée ajoutée : l'utilisateur actualise au clic.
+sans export JSON dans l’interface. L'historique conserve désormais sept jours
+de recherches, avec l'analyse agentique ou son erreur partielle. Aucune tâche programmée : l'utilisateur actualise au clic.
 
 ## Validation
 
-Méthode validée par Pipelex, types `python-pydantic` générés dans
-`backend/generated/recent_brief/`. Contrôle de dérive :
+Les étapes actives de `methods/recent_agent/main.mthds` sont testées avec le moteur
+Pipelex et un transport fournisseur simulé. Les types générés de la synthèse
+historique restent utilisés pour le contrôle des citations. Contrôles hors ligne :
 
 ```powershell
 .\.venv\Scripts\python.exe scripts/codegen_check.py backend/generated/recent_brief
@@ -91,6 +101,6 @@ pas présentés comme des actualités des 30 derniers jours.
 Une plage élargie ne garantit pas une collecte exhaustive sur toute cette durée :
 les limites des flux et du nombre de séances examinées restent affichées.
 
-État de livraison : prototype, génération réelle à revalider après ces correctifs.
+État de livraison : prototype, génération réelle à relire avant la démonstration.
 Les tests automatisés utilisent des réponses IA simulées ; ils ne certifient pas
-la fidélité des résumés politiques. Aucun push sur main ni déploiement public.
+la fidélité des résumés politiques. Le mode de remise recommandé est un dépôt accessible avec instructions de test local.
