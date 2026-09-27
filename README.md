@@ -95,4 +95,9 @@ leur persistance et leur actualisation quotidienne ne sont pas raccordées.
 
 Voir [le raccordement](backend/INTEGRATION.md) et [les limites des sources](backend/SOURCES.md).
 
+La [partie API et données](backend/data_sources/README.md) dispose maintenant d'un
+premier connecteur à l'export officiel du Sénat : recherche locale de dossiers et
+préparation d'un corpus pour Pipelex, sans appel IA. Ce connecteur est séparé du
+parcours actuel du formulaire et reste à y raccorder.
+
 Licence MIT — voir [LICENSE](LICENSE).

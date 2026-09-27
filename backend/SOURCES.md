@@ -19,7 +19,8 @@ requête et un budget de collecte de 30 secondes contrôlé entre lectures. Une 
 en cours peut dépasser ce budget jusqu’à son timeout. Pas de contournement des
 restrictions d’accès ni de rendu JavaScript.
 
-HTML : suppression des scripts/styles/en-têtes. PDF : couche texte extraite avec
+HTML : priorité au contenu de la balise `main` quand elle existe ; sinon extraction
+générale sans scripts/styles/en-têtes. PDF : couche texte extraite avec
 pypdf dans un processus séparé, huit secondes au plus, 40 pages, 2 Mo de contenu
 décompressé par page et 500 000 caractères. Ces seuils ne sont pas une limite dure
 de mémoire pendant le décodage. Pas d’OCR ni de validation visuelle. Les citations

@@ -27,6 +27,7 @@ class FetchedSource:
     text: str
     final_url: str
     pages: list | None = None
+    links: list[str] | None = None
 
 
 def read_pdf(body, deadline):
@@ -62,22 +63,44 @@ class PageText(HTMLParser):
         super().__init__(convert_charrefs=True)
         self.hidden = 0
         self.parts = []
+        self.main_parts = []
+        self.links = []
+        self.main_links = []
+        self.main_depth = 0
+        self.has_main = False
+
+    def append_text(self, value):
+        self.parts.append(value)
+        if self.main_depth:
+            self.main_parts.append(value)
 
     def handle_starttag(self, tag, attrs):
+        if tag == 'main':
+            self.has_main = True
+            self.main_depth += 1
         if tag in ('script', 'style', 'head', 'noscript', 'template'):
             self.hidden += 1
         if not self.hidden and tag in ('p', 'div', 'br', 'li', 'td', 'tr', 'h1', 'h2', 'h3', 'section', 'article'):
-            self.parts.append(' ')
+            self.append_text(' ')
+        if not self.hidden and tag == 'a':
+            href = dict(attrs).get('href')
+            if href:
+                if len(self.links) < 256:
+                    self.links.append(href)
+                if self.main_depth and len(self.main_links) < 256:
+                    self.main_links.append(href)
 
     def handle_endtag(self, tag):
+        if tag == 'main':
+            self.main_depth = max(0, self.main_depth - 1)
         if tag in ('script', 'style', 'head', 'noscript', 'template'):
             self.hidden = max(0, self.hidden - 1)
         if not self.hidden and tag in ('p', 'div', 'li', 'td', 'tr', 'h1', 'h2', 'h3', 'section', 'article'):
-            self.parts.append(' ')
+            self.append_text(' ')
 
     def handle_data(self, data):
         if not self.hidden:
-            self.parts.append(data)
+            self.append_text(data)
 
 
 def normalize(text):
@@ -114,13 +137,17 @@ def fetch_text(client, url, deadline):
                     pdf = read_pdf(bytes(body), deadline)
                     return FetchedSource(pdf['status'], '', current, pdf['pages'])
                 decoded = bytes(body).decode(response.encoding or 'utf-8', errors='replace')
+                links = []
                 if media != 'text/plain':
                     parser = PageText()
                     parser.feed(decoded)
-                    decoded = ''.join(parser.parts)
+                    decoded = ''.join(parser.main_parts if parser.has_main else parser.parts)
+                    hrefs = parser.main_links if parser.has_main else parser.links
+                    links = list(dict.fromkeys(urljoin(current, href) for href in hrefs
+                                               if allowed_url(urljoin(current, href))))
                 if not normalize(decoded):
                     return FetchedSource('empty_page', '', current)
-                return FetchedSource('retrieved', decoded, current)
+                return FetchedSource('retrieved', decoded, current, links=links)
         except (httpx.HTTPError, UnicodeError, LookupError):
             return FetchedSource('unavailable', '', current)
     return FetchedSource('redirect_limit', '', current)
