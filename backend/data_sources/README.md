@@ -182,3 +182,40 @@ automatiques utilisent des CSV et réponses HTTP fictifs. Ils vérifient
 l'encodage, les dates, les URL, les doublons, les limites, les erreurs et la
 préparation sans appel IA. Les droits de réutilisation des données restent ceux
 du producteur ; la licence MIT du code ne remplace pas leur licence.
+
+## Événements récents
+
+`recent.search_recent(topic, days=30)` accepte 7 ou 30 jours calendaires inclusifs.
+`dateActe` est parcouru récursivement dans l'archive Assemblée, indépendamment du
+dépôt initial ; dates nulles et futures sont exclues. Les dates de dépôt et de
+promulgation du CSV Sénat sont conservées avec leur nature exacte. Les actes restent
+distincts même sur un même dossier. Les doublons exacts seuls sont supprimés.
+
+Le résultat expose `events`, `datasets`, `limitations`, `collected_at`, `start`, `end`.
+Chaque événement conserve `source_url`, `source_location`, `retrieved_at` et
+`dataset_sha256`. Les métadonnées ne deviennent ni une citation du texte de loi
+ni une preuve de la vigueur actuelle. Les erreurs d'un producteur restent visibles,
+sans remplacement fictif. Ce chemin ne change pas le schéma du rapport Pipelex.
+
+## Flux de publication officiels branchés
+
+Le bloc Actualités consulte aussi les flux RSS du Sénat (textes, rapports et
+logement lorsque ce mot est recherché) et les listes quotidiennes de publications
+de l'Assemblée pour aujourd'hui et hier. Le téléchargement se fait au clic.
+Les listes Assemblée sont filtrées sur les amendements XML de la 17e législature ;
+au plus 12 détails distincts sont lus, les plus récemment publiés d'abord.
+La correspondance du sujet porte sur le dispositif et l'exposé sommaire.
+
+La date RSS ou celle de la liste est une mise en ligne/republication, pas une preuve
+de dépôt, d'adoption ou de promulgation. Les notices de flux restent distinctes des
+actes parlementaires. Pas de garantie de couverture de 30 jours par les flux :
+ils complètent les inventaires. Les indisponibilités et les limites sont affichées.
+Ces signaux restent dans le bloc sans IA, séparé du résumé Pipelex.
+
+Contrôle réel du 27 septembre : deux inventaires, trois RSS et deux listes quotidiennes
+accessibles. Pour logement, 13 événements au total ; aucun signal supplémentaire
+correspondant dans les flux consultés. Aucun résultat fictif ajouté, aucun appel IA.
+Validation : 262 tests et 28 sous-tests passent ; mypy valide les deux collecteurs.
+
+Références : https://www.senat.fr/flux-rss.html et
+https://data.assemblee-nationale.fr/foire-aux-questions .

@@ -56,7 +56,7 @@ class StreamlitDemoTests(unittest.TestCase):
             app = AppTest.from_file(str(ROOT / 'frontend/interface_b.py')).run()
             self.assertEqual(len(app.exception), 0)
             app.text_input(key='b_topic').set_value('Accessibilité des transports')
-            app.button[0].click().run()
+            next(button for button in app.button if button.label == "Afficher l'exemple fictif").click().run()
             self.assertEqual(len(app.exception), 0)
             self.assertIsNotNone(app.session_state['b_last'])
             self.assertEqual(app.session_state['b_last']['result']['mode'], 'demo')

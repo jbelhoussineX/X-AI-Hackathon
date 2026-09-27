@@ -538,6 +538,8 @@ def afficher_resultat(item: dict, prefixe: str = "current") -> None:
 # 8. ÉCRAN RECHERCHE : formulaire, résultat et petit historique temporaire.
 def page_recherche(mode: str) -> None:
     titre_page("RECHERCHE DOCUMENTAIRE / FRANCE", "Un sujet. Des documents. Des repères.", SOUS_TITRE)
+    from frontend.recent_activity import render
+    render()
     if mode == "demo":
         st.warning("Mode démonstration : des données fictives pour construire l'interface sans crédits ni clé API.")
     else:

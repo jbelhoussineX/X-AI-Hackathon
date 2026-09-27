@@ -145,3 +145,46 @@ validation des rapports, gestion des compléments tronqués et diagnostics expur
 Voir [le branchement](docs/BRANCHEMENT_STREAMLIT.md) et
 [la revue des sources](docs/REVUE_SOURCES_OFFICIELLES.md).
 Ces changements ne prouvent pas la résolution d’une erreur réseau de l’API hébergée.
+
+## Actualités récentes
+
+Dans Recherche, ouvrir « Actualités récentes · 7 ou 30 jours », saisir un sujet
+puis cliquer « Consulter les actualités officielles ». Ce bloc télécharge à chaque
+clic les inventaires officiels, sans clé ni appel IA. Il sélectionne la date de
+l'événement, indépendamment de la date initiale du texte, et affiche source,
+localisation dans l'export et date de collecte. Les 20 événements les plus récents
+sont affichés, avec un export JSON et les limites de couverture.
+
+Les actes datés des dossiers de la 17e législature viennent de l'Assemblée
+(y compris les étapes au Sénat enregistrées dans ces dossiers). L'export Sénat
+complète les dépôts et promulgations ; il ne couvre pas toutes les étapes.
+Une réunion inscrite n'est pas une preuve de sa tenue. La mise à jour du producteur
+peut être décalée. Aucun statut de droit en vigueur n'est inféré.
+
+Ce bloc affiche directement les métadonnées officielles : il ne génère pas de résumé
+IA. Le rapport Pipelex existant reste séparé et conserve son filtre de publication.
+Contrôle réel du 27 septembre 2026 : logement, du 29 août au 27 septembre inclus,
+13 événements trouvés, deux inventaires accessibles. Aucun appel IA pendant ce contrôle.
+
+## Flux de publication officiels branchés
+
+Le bloc Actualités consulte aussi les flux RSS du Sénat (textes, rapports et
+logement lorsque ce mot est recherché) et les listes quotidiennes de publications
+de l'Assemblée pour aujourd'hui et hier. Le téléchargement se fait au clic.
+Les listes Assemblée sont filtrées sur les amendements XML de la 17e législature ;
+au plus 12 détails distincts sont lus, les plus récemment publiés d'abord.
+La correspondance du sujet porte sur le dispositif et l'exposé sommaire.
+
+La date RSS ou celle de la liste est une mise en ligne/republication, pas une preuve
+de dépôt, d'adoption ou de promulgation. Les notices de flux restent distinctes des
+actes parlementaires. Pas de garantie de couverture de 30 jours par les flux :
+ils complètent les inventaires. Les indisponibilités et les limites sont affichées.
+Ces signaux restent dans le bloc sans IA, séparé du résumé Pipelex.
+
+Contrôle réel du 27 septembre : deux inventaires, trois RSS et deux listes quotidiennes
+accessibles. Pour logement, 13 événements au total ; aucun signal supplémentaire
+correspondant dans les flux consultés. Aucun résultat fictif ajouté, aucun appel IA.
+Validation : 262 tests et 28 sous-tests passent ; mypy valide les deux collecteurs.
+
+Références : https://www.senat.fr/flux-rss.html et
+https://data.assemblee-nationale.fr/foire-aux-questions .
