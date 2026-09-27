@@ -1,5 +1,37 @@
 # Repères citoyens — socle de hackathon
 
+## Mise à jour locale : interface de l'équipe et Pipelex
+
+`app.py` lance désormais l'interface de `frontend/interface_b.py`, avec un mode
+**Démonstration** sans réseau et un mode **Pipelex + OpenAI**. Le moteur Pipelex
+tourne localement ; les appels de modèles et la recherche web utilisent OpenAI.
+
+Sur le Mac de l'équipe :
+
+```bash
+conda activate xia-hackathon
+python -m streamlit run app.py --server.address 127.0.0.1 --server.fileWatcherType none
+```
+
+L'ouverture et la navigation ne déclenchent aucun appel IA. Une recherche réelle
+nécessite le consentement dans le menu et un clic sur le bouton. Elle utilise
+3 à 4 appels de modèle, avec au plus une recherche complémentaire et aucune
+relance automatique après erreur. Les frais des outils web sont distincts des
+tokens ; ce nombre d'appels n'est pas un plafond monétaire.
+
+**Validation : 60 tests hors ligne réussis**, dont le véritable parcours Pipelex
+avec transport OpenAI simulé et les tests Streamlit. La connexion texte OpenAI
+a été vérifiée auparavant ; **le nouveau parcours de recherche web n'a pas été
+testé avec une clé réelle**. Aucun résultat documentaire réel n'est encore validé.
+
+Voir [le branchement et ses limites](docs/BRANCHEMENT_STREAMLIT.md) et
+[l'installation Pipelex](docs/INSTALLATION_PIPELEX.md).
+La signature du service et le rapport JSON v1 sont conservés ; `mode="pipelex"`
+est ajouté. Les schémas et `CONTRACT.md` ne sont pas modifiés.
+
+Les sections Dust ci-dessous documentent le socle historique, toujours conservé
+dans le service pour compatibilité, et ne décrivent pas le nouveau moteur.
+
 Prototype de recherche documentaire : thème → textes parlementaires → extraits → interlocuteurs.
 **Ce dossier est un point de départ généré avec une IA, pas un produit terminé.**
 

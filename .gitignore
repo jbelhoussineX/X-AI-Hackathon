@@ -1,5 +1,4 @@
-.env
-.env.*
+.env*
 !.env.example
 .venv/
 __pycache__/
@@ -9,6 +8,7 @@ __pycache__/
 .streamlit/secrets.toml
 private/
 *.log
+results/
 
 # Règles supplémentaires du dépôt partagé.
 venv/

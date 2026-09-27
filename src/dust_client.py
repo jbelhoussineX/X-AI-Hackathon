@@ -85,7 +85,7 @@ def extract_report(payload: dict, agent_id: str) -> tuple[dict, str | None]:
         raise DustError('Structure de conversation inattendue.')
     messages = [m for group in content for m in (group if isinstance(group, list) else [group]) if isinstance(m, dict)]
     # On ne lit JAMAIS chainOfThought, les instructions de configuration ou les messages utilisateurs.
-    candidates = [m for m in messages if (m.get('configuration') or {}).get('sId') == agent_id and (m.get('type') == 'agent' or (m.get('type') is None and 'rawContents' in m))]
+    candidates = [m for m in messages if (m.get('configuration') or {}).get('sId') == agent_id and (m.get('type') in ('agent', 'agent_message') or (m.get('type') is None and 'rawContents' in m))]
     if not candidates:
         raise DustError('Aucune réponse de l’agent ciblé. Vérifier DUST_AGENT_ID, la publication et les permissions.')
     last = candidates[-1]
@@ -105,7 +105,15 @@ def extract_report(payload: dict, agent_id: str) -> tuple[dict, str | None]:
 def run_dust(message: str, settings: Settings | None = None) -> tuple[dict, str | None]:
     settings = settings or Settings.load()
     data = _request(settings, 'POST', 'conversations', {
-        'message': {'content': message, 'mentions': [{'configurationId': settings.agent_id}]},
+        'message': {
+            'content': message,
+            'mentions': [{'configurationId': settings.agent_id}],
+            # Contexte requis par le SDK Dust : identité générique de l'application.
+            # https://github.com/dust-tt/dust/blob/main/sdks/js/src/types.ts
+            'context': {
+                'username': 'reperes-citoyens', 'timezone': 'Europe/Paris', 'origin': 'api',
+            },
+        },
         'title': 'Recherche citoyenne — prototype',
         'blocking': True,
         'skipToolsValidation': False,

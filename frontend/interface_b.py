@@ -315,10 +315,10 @@ def creer_demonstration(requete: dict) -> dict:
 
 
 # 5. POINT DE CONNEXION AVEC A : SEULE CETTE FONCTION DÉPEND DE VOTRE DÉPÔT.
-def appeler_service_a(requete: dict) -> dict:
+def appeler_service_a(requete: dict, mode: str = "pipelex") -> dict:
     """Adaptez l'import avec A si votre dépôt utilise un autre chemin.
 
-    Contrat du guide précédent : src.service.search(topic, start, end, mode='dust').
+    Même signature et même rapport : src.service.search(topic, start, end, mode='pipelex').
     Cette fonction n'essaie pas plusieurs imports et ne relance pas une requête qui échoue.
     """
     try:
@@ -332,14 +332,18 @@ def appeler_service_a(requete: dict) -> dict:
             "Le mode Démonstration fonctionne sans ce service."
         ) from exc
     try:
-        return fonction(requete["topic"], requete["start"], requete["end"], mode="dust")
+        return fonction(requete["topic"], requete["start"], requete["end"], mode=mode)
     except Exception as exc:
+        from src.pipelex_client import PipelexError
+        from src.contracts import ReportError
+        if isinstance(exc, (PipelexError, ReportError)):
+            raise ErreurInterface(str(exc)) from None
         # Ne pas afficher str(exc) : une erreur du service pourrait contenir une clé ou un en-tête.
         categorie = type(exc).__name__
         raise ErreurInterface(
             f"Le service de recherche a échoué ({categorie}). Aucun résultat fictif ne le remplace. "
             "Demande à A de contrôler les accès et les journaux expurgés. Avant de relancer, "
-            "vérifie dans Dust qu'aucune génération n'est encore en cours."
+            "vérifie l'activité du fournisseur ; un délai local n'annule pas forcément une génération distante."
         ) from None
 
 
@@ -350,6 +354,8 @@ def initialiser_etat(etat: MutableMapping) -> None:
     for key, value in defaults.items():
         if key not in etat:
             etat[key] = copy.deepcopy(value)
+    if etat["b_mode"] not in ("demo", "pipelex"):
+        etat["b_mode"] = "demo"
     if "b_next_page" in etat:
         etat["b_page"] = etat.pop("b_next_page")
 
@@ -364,7 +370,7 @@ def conserver_resultat(etat: MutableMapping, requete: dict, resultat: dict) -> d
 
 def ajouter_veille(etat: MutableMapping, requete: dict, mode: str) -> tuple[str, bool]:
     requete = verifier_requete(requete["topic"], requete["start"], requete["end"])
-    if mode not in ("demo", "dust"):
+    if mode not in ("demo", "pipelex", "dust"):
         raise ErreurInterface("Mode de veille inconnu.")
     identity = json.dumps([requete["topic"].casefold(), requete["start"], requete["end"], mode], ensure_ascii=False)
     ident = hashlib.sha256(identity.encode()).hexdigest()[:16]
@@ -389,18 +395,18 @@ def lancer_recherche(requete: dict, mode: str) -> bool:
     etat["b_error"] = None
     etat["b_last"] = None  # Un résultat précédent ne doit pas masquer l'échec du nouvel essai.
     try:
-        if mode == "dust":
+        if mode in ("pipelex", "dust"):
             if not etat.get("b_consent", False):
                 raise ErreurInterface("Confirme dans le menu l'utilisation de l'accès partenaire avant la recherche réelle.")
             if etat["b_live_attempts"] >= MAX_APPELS_SESSION:
                 raise ErreurInterface("Limite de dix essais réels dans cette session. Vérifiez les crédits avant de poursuivre.")
             etat["b_live_attempts"] += 1
             with st.spinner("Recherche en cours. Cette attente n'est pas un journal des actions de l'agent."):
-                raw = appeler_service_a(requete)
+                raw = appeler_service_a(requete, mode)
         else:
             raw = creer_demonstration(requete)
         result = verifier_sortie(raw, mode)
-        if mode == "dust":
+        if mode in ("pipelex", "dust"):
             for d in result["report"]["documents"]:
                 publication = d["publication_date"]
                 if publication and not requete["start"] <= publication <= requete["end"]:
@@ -535,7 +541,7 @@ def page_recherche(mode: str) -> None:
     if mode == "demo":
         st.warning("Mode démonstration : des données fictives pour construire l'interface sans crédits ni clé API.")
     else:
-        st.info("Mode réel : le bouton appelle le service Python de votre équipe. Aucune recherche automatique à l'ouverture.")
+        st.info("Recherche réelle via Pipelex et OpenAI : 3 à 4 appels de modèle, avec recherche web. Les crédits API sont utilisés uniquement après ton clic.")
     with st.form("b_search_form"):
         st.subheader("Quel sujet souhaites-tu explorer ?")
         sujet = st.text_input("Sujet de recherche", max_chars=300, placeholder="Ex. : accessibilité des transports publics", key="b_topic")
@@ -630,18 +636,18 @@ def page_veilles(mode: str) -> None:
 
 # 10. AIDE : limites affichées dans le produit, pas seulement dans le README.
 def page_aide() -> None:
-    titre_page("MODE D'EMPLOI", "Ce qui fonctionne. Ce qui reste à relier.", "Une interface testable sans toucher aux traitements de l'équipe.")
+    titre_page("MODE D'EMPLOI", "Comprendre la recherche et ses limites.", "Des résultats sourcés à relire, sans recommandation politique.")
     with st.container(border=True):
         st.subheader("Déjà disponible")
-        st.write("Formulaire, résultats, extraits, contacts, filtres locaux, export JSON, historique et veilles de session.")
+        st.write("Formulaire, recherche Pipelex/OpenAI, résultats, extraits, contacts, filtres locaux, export JSON, historique et veilles de session.")
         st.subheader("À connecter avec A et C")
-        st.write("Recherche réelle via le service de A, sauvegarde SQLite, comparaison Pipelex et déclenchement quotidien.")
-        st.caption("La fonction appeler_service_a() est le seul point de connexion au dépôt. Elle utilise le contrat du guide précédent, pas une structure de dépôt prétendument vérifiée.")
+        st.write("Sauvegarde SQLite, comparaison entre actualisations et déclenchement quotidien.")
+        st.caption("Une recherche consulte des sources officielles, évalue les informations manquantes et peut faire un seul complément avant de produire le rapport.")
     with st.expander("Comprendre les sources et les dates"):
         st.write("Une source citée n'est pas automatiquement une source vérifiée. L'étape de procédure, le résumé et le contact peuvent avoir des preuves différentes.")
         st.write("La date d'exécution indique quand la requête s'est terminée. Elle ne prouve pas que chaque page a été revérifiée indépendamment.")
     with st.expander("Données et confidentialité"):
-        st.write("Pas de compte, de stockage sur disque ni de profil politique dans ce fichier. En mode réel, le service peut transmettre les requêtes à Dust et conserver des conversations chez le fournisseur.")
+        st.write("L'historique et les veilles restent dans cette session. En mode réel, le sujet et les sources sont transmis à OpenAI. Pipelex tourne sur cet ordinateur. Aucun profil politique n'est construit.")
         st.write("Les exports restent sous ton contrôle. Ne saisis pas d'informations sensibles. Aucune clé API ne doit être saisie dans cette interface.")
     with st.expander("Effacer les données de cette session"):
         st.write("Cela efface l'historique, les résultats et les veilles ici, pas les conversations chez un fournisseur ni les fichiers exportés.")
@@ -665,11 +671,11 @@ def main() -> None:
         st.markdown('<div class="brand">repères<br><em>citoyens.</em></div><div class="brand-tag">CHERCHER · COMPRENDRE · SUIVRE</div>', unsafe_allow_html=True)
         st.radio("Navigation", ["Recherche", "Mes veilles", "Aide"], key="b_page")
         st.divider()
-        st.radio("Source des résultats", ["demo", "dust"], key="b_mode",
-                 format_func=lambda x: "Démonstration · sans IA" if x == "demo" else "Recherche réelle · service A")
+        st.radio("Source des résultats", ["demo", "pipelex"], key="b_mode",
+                 format_func=lambda x: "Démonstration · sans IA" if x == "demo" else "Recherche réelle · Pipelex + OpenAI")
         mode = st.session_state["b_mode"]
-        if mode == "dust":
-            st.checkbox("J'autorise un appel via l'accès partenaire lors de mon clic.", key="b_consent")
+        if mode == "pipelex":
+            st.checkbox("J'autorise cette recherche à utiliser les crédits API OpenAI lors de mon clic.", key="b_consent")
             st.caption(f"Essais réels dans cette session : {st.session_state['b_live_attempts']}/{MAX_APPELS_SESSION}. Ce compteur n'est pas un plafond fournisseur.")
         else:
             st.caption("Aucune clé nécessaire. Toutes les fiches d'exemple sont inventées.")

@@ -1,0 +1,41 @@
+domain = "recherche_citoyenne"
+description = "Recherche officielle, évaluation des manques, complément borné et rapport citoyen."
+main_pipe = "rechercher"
+
+[pipe.rechercher]
+type = "PipeSequence"
+description = "Orchestrer une recherche documentaire avec au plus un complément décidé par le LLM."
+output = "Text"
+steps = [
+    { pipe = "collecter", result = "sources" },
+    { pipe = "evaluer", result = "assessment" },
+    { pipe = "completer", result = "corpus" },
+    { pipe = "rediger", result = "report" },
+]
+
+[pipe.collecter]
+type = "PipeFunc"
+description = "Consulter les sources officielles avec l'outil web OpenAI."
+function_name = "collect_sources"
+output = "Text"
+
+[pipe.evaluer]
+type = "PipeFunc"
+description = "Faire identifier au LLM les preuves manquantes et le complément utile."
+function_name = "assess_gaps"
+inputs = { sources = "Text" }
+output = "Text"
+
+[pipe.completer]
+type = "PipeFunc"
+description = "Exécuter au plus une recherche complémentaire selon la décision contrôlée."
+function_name = "complete_sources"
+inputs = { assessment = "Text" }
+output = "Text"
+
+[pipe.rediger]
+type = "PipeFunc"
+description = "Produire le JSON existant puis contrôler sa structure et la provenance des URLs."
+function_name = "write_report"
+inputs = { corpus = "Text" }
+output = "Text"

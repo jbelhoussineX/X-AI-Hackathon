@@ -81,8 +81,15 @@ def test_extract_only_target(report):
     assert found == report and cid == 'conv123'
     assert 'chainOfThought' not in found
 
-def test_reject_human_even_with_json(report):
-    with pytest.raises(DustError): extract_report(envelope(report, typ='human'), 'agent123')
+@pytest.mark.parametrize('typ', ['human', 'user_message'])
+def test_reject_human_even_with_json(report, typ):
+    with pytest.raises(DustError): extract_report(envelope(report, typ=typ), 'agent123')
+
+@pytest.mark.parametrize('status', ['succeeded', 'completed'])
+def test_extract_public_api_agent_message(report, status):
+    found, cid = extract_report(envelope(report, status=status, typ='agent_message'), 'agent123')
+    assert found == report and cid == 'conv123'
+    assert 'chainOfThought' not in found
 
 def test_wrong_agent(report):
     with pytest.raises(DustError): extract_report(envelope(report), 'other_agent')
@@ -101,6 +108,11 @@ def test_http_call_and_contract(report):
         assert result == report
         assert req.call_args.kwargs['json']['blocking'] is True
         assert req.call_args.kwargs['json']['skipToolsValidation'] is False
+        # Champs attendus par UserMessageContextSchema dans le SDK public Dust.
+        # L'identité de l'application suffit ; aucune identité personnelle n'est envoyée.
+        assert req.call_args.kwargs['json']['message']['context'] == {
+            'username': 'reperes-citoyens', 'timezone': 'Europe/Paris', 'origin': 'api',
+        }
         assert req.call_args.kwargs['allow_redirects'] is False
         assert req.call_count == 1
 

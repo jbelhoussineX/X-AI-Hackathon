@@ -5,6 +5,7 @@ import json
 import time
 from src.contracts import ROOT, ReportError, validate_report
 from src.dust_client import run_dust
+from src.pipelex_client import run_pipelex
 
 def search(topic: str, start: str, end: str, mode: str = 'demo') -> dict:
     topic = topic.strip()
@@ -20,6 +21,11 @@ def search(topic: str, start: str, end: str, mode: str = 'demo') -> dict:
     conversation_id = None
     if mode == 'demo':
         report = validate_report(json.loads((ROOT / 'fixtures/demo.json').read_text(encoding='utf-8')))
+    elif mode == 'pipelex':
+        report, conversation_id = run_pipelex(topic, start, end)
+        for d in report['documents']:
+            if d['publication_date'] and not first <= date.fromisoformat(d['publication_date']) <= last:
+                raise ReportError('Un document daté sort de la période demandée. Affichage refusé ; vérifier la recherche.')
     elif mode == 'dust':
         request = {
             'sujet': topic, 'territoire': 'France',
@@ -39,7 +45,7 @@ def search(topic: str, start: str, end: str, mode: str = 'demo') -> dict:
             if d['publication_date'] and not first <= date.fromisoformat(d['publication_date']) <= last:
                 raise ReportError('Un document daté sort de la période demandée. Affichage refusé ; vérifier la recherche.')
     else:
-        raise ReportError('Mode inconnu : choisir demo ou dust.')
+        raise ReportError('Mode inconnu : choisir demo, pipelex ou dust.')
     return {
         'mode': mode, 'run_at_utc': datetime.now(timezone.utc).isoformat(),
         'duration_seconds': round(time.monotonic() - t0, 2),
