@@ -53,7 +53,13 @@ class StreamlitDemoTests(unittest.TestCase):
         # Catch any accidental external call while interacting with the existing page.
         with patch('httpx.Client.send', side_effect=AssertionError('Network forbidden')), \
              patch('src.service.research', side_effect=AssertionError('Pipelex forbidden')):
-            app = AppTest.from_file(str(ROOT / 'frontend/interface_b.py')).run()
+            # Le formulaire historique est conservé hors de la page d’accueil.
+            app = AppTest.from_string('''
+import streamlit as st
+from frontend.interface_b import initialiser_etat, recherche_documents
+initialiser_etat(st.session_state)
+recherche_documents('demo')
+''').run()
             self.assertEqual(len(app.exception), 0)
             app.text_input(key='b_topic').set_value('Accessibilité des transports')
             next(button for button in app.button if button.label == "Afficher l'exemple fictif").click().run()

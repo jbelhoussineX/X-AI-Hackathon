@@ -1,6 +1,8 @@
 """Recent official inventory events; deliberately separate from publication search."""
 import json
 import os
+from datetime import date
+from html import escape
 
 import streamlit as st
 
@@ -11,19 +13,26 @@ CATEGORIES = {'procedure': 'Étape législative', 'publication': 'Publication pa
               'amendement': 'Amendement', 'debat': 'Débat / intervention', 'actualite': 'Actualité institutionnelle'}
 
 
+def date_label(value):
+    try:
+        return date.fromisoformat(value).strftime('%d/%m/%Y')
+    except (ValueError, TypeError):
+        return 'Date non renseignée'
+
+
 def render(*, allow_ai=False):
-    with st.expander('Actualités récentes · période au choix', expanded=True):
-        st.caption('Retrouver une évolution récente, même sur un texte ancien. '
-                   'Collecte officielle sans IA, puis synthèse Pipelex facultative des nouveautés.')
+    with st.container():
         with st.form('recent_activity_form'):
             topic = st.text_input('Sujet des actualités', max_chars=300, key='recent_topic',
-                                  placeholder='Ex. : logement')
-            unit = st.selectbox('Unité de la période', ['mois', 'jours'], key='recent_unit')
-            amount = st.number_input('Durée de la recherche', min_value=1, max_value=90,
+                                  placeholder='Ex. : logement, énergie, transports…')
+            period, units = st.columns([1, 1])
+            amount = period.number_input('Sur les derniers…', min_value=1, max_value=90,
                                      value=3, step=1, key='recent_amount',
                                      help='1 à 12 mois calendaires ou 1 à 90 jours. Aujourd’hui inclus.')
-            submitted = st.form_submit_button('Consulter les actualités officielles')
+            unit = units.selectbox('Unité de la période', ['mois', 'jours'], key='recent_unit')
+            submitted = st.form_submit_button('Rechercher', type='primary', width='stretch')
         if submitted:
+            st.session_state.pop('recent_categories', None)
             st.session_state.pop('recent_result', None)
             st.session_state.pop('recent_brief', None)
             st.session_state.pop('recent_brief_error', None)
@@ -36,25 +45,32 @@ def render(*, allow_ai=False):
         result = st.session_state.get('recent_result')
         if result is None:
             return
-        st.write(result['topic'])
-        st.caption(f"Événements du {result['start']} au {result['end']} inclus · "
-                   f"Collecte : {result['collected_at']}")
+        st.divider()
+        st.subheader('Consulter les résultats')
+        st.text(result['topic'])
+        st.caption(f"Du {date_label(result['start'])} au {date_label(result['end'])} inclus · "
+                   'Résultats de la dernière recherche validée')
+        total, sources = st.columns(2)
+        total.metric('Événements retrouvés', len(result['events']))
+        sources.metric('Sources disponibles', f"{sum(d['status'] == 'ok' for d in result['datasets'])} / {len(result['datasets'])}")
         for dataset in result['datasets']:
             if dataset['status'] != 'ok':
                 st.warning(f"Source {dataset['provider']} indisponible : résultats partiels.")
-            elif dataset.get('latest_session_date'):
-                st.caption(f"{dataset['provider']} : dernière séance repérée dans l’index, {dataset['latest_session_date']}.")
         if not result['events']:
             st.info('Aucun événement daté retrouvé dans cette fenêtre et ce corpus. '
                     'Cela ne signifie pas qu’il n’existe aucune actualité sur ce sujet.')
         else:
+            st.subheader('Comprendre les nouveautés')
+            st.caption('Facultatif · La synthèse porte sur la collecte complète, dans les limites du corpus lu. Les filtres ci-dessous ne la modifient pas.')
             engine = os.environ.get('PIPELEX_EXECUTION_MODE', 'hosted')
             provider = 'API Pipelex' if engine == 'hosted' else 'Pipelex local et OpenAI'
             consent = st.checkbox(f'Autoriser une synthèse IA via {provider} (crédits fournisseur)',
                                   key='recent_consent', disabled=not allow_ai)
             if not allow_ai:
-                st.caption('Passe en Recherche réelle · Pipelex pour activer la synthèse. La collecte reste sans IA.')
+                st.caption('Sélectionnez « Avec synthèse » dans le menu de gauche pour activer cette option.')
             enabled = os.environ.get('ENABLE_PIPELEX_CALLS', '').lower() == 'true'
+            if allow_ai and not enabled:
+                st.info('La synthèse IA est désactivée sur ce serveur. Les sources restent consultables ci-dessous.')
             if st.button('Synthétiser les nouveautés avec Pipelex', disabled=not (consent and enabled and allow_ai),
                          key='recent_summarize'):
                 st.session_state.pop('recent_brief', None)
@@ -77,8 +93,8 @@ def render(*, allow_ai=False):
                 if brief.get('duplicate_count'):
                     st.info(f"{brief['duplicate_count']} répétition(s) écartée(s). Une synthèse par événement est conservée.")
                 for item in brief['items']:
-                    st.caption(f"{CATEGORIES.get(item['category'], item['category'])} · {item['event_date']} · {item['date_kind']}")
-                    st.text(item['summary'])
+                    st.caption(f"{CATEGORIES.get(item['category'], item['category'])} · {date_label(item['event_date'])}")
+                    st.markdown(f'<div class="safe-text">{escape(item["summary"])}</div>', unsafe_allow_html=True)
                     st.text('Extrait vérifié : ' + item['excerpt'])
                     st.link_button('Lire la source de cette synthèse', item['url'])
                 if not brief['items']:
@@ -88,21 +104,36 @@ def render(*, allow_ai=False):
                         st.text(limit)
                 st.download_button('Exporter la synthèse récente', json.dumps(brief, ensure_ascii=False, indent=2),
                                    file_name='synthese_recente.json', mime='application/json', on_click='ignore')
-        for event in result['events']:
+        st.subheader('Événements et sources')
+        categories = sorted({event.get('category', 'procedure') for event in result['events']})
+        selected = st.multiselect('Filtrer par type d’événement', categories,
+                                  format_func=lambda value: CATEGORIES.get(value, value),
+                                  placeholder='Tous les types', key='recent_categories')
+        order = st.selectbox('Ordre des événements', ['Plus récents d’abord', 'Plus anciens d’abord'], key='recent_order')
+        events = [event for event in result['events'] if not selected or event.get('category', 'procedure') in selected]
+        events = sorted(events, key=lambda event: event['event_date'], reverse=order == 'Plus récents d’abord')
+        st.caption(f"{len(events)} événement(s) affiché(s) sur {len(result['events'])}. Filtres sans nouvel appel réseau ou IA.")
+        for event in events:
             with st.container(border=True):
-                st.text(event['title'])
-                st.caption(CATEGORIES.get(event.get('category', 'procedure'), 'Publication officielle'))
-                st.text(f"{event['event_date']} — {event['event']}")
+                st.caption(f"{date_label(event['event_date'])} · {CATEGORIES.get(event.get('category', 'procedure'), 'Publication officielle')}")
+                st.markdown(f'<div class="doc-title">{escape(event["title"])}</div>', unsafe_allow_html=True)
+                st.text(event['event'])
                 if event['decision']:
                     st.text('Décision indiquée dans cet acte : ' + event['decision'])
-                st.caption(f"Source : {event['provider']} · Champ de date : {event['date_kind']} · "
-                           f"Collecté le {event['retrieved_at']}")
-                if event.get('description'):
-                    st.text(event['description'])
-                st.link_button('Voir la page ou le document officiel', event['dossier_url'])
-                st.link_button('Télécharger la source officielle', event['source_url'])
-                st.caption('Localisation dans la source : ' + event['source_location'])
-        for limitation in result['limitations']:
-            st.caption(limitation)
+                st.link_button('Lire la source officielle', event['dossier_url'])
+                with st.expander('Détails et provenance'):
+                    if event.get('description'):
+                        st.text(event['description'])
+                    st.caption(f"Source : {event['provider']} · Nature de la date : {event['date_kind']} · "
+                               f"Collecté le {event['retrieved_at']}")
+                    st.link_button('Ouvrir les données sources', event['source_url'])
+                    st.text('Localisation dans la source : ' + event['source_location'])
+        with st.expander('Couverture et limites de la recherche'):
+            st.caption('Collecte : ' + result['collected_at'])
+            for dataset in result['datasets']:
+                if dataset.get('latest_session_date'):
+                    st.text(f"{dataset['provider']} : dernière séance repérée dans l’index, {date_label(dataset['latest_session_date'])}.")
+            for limitation in result['limitations']:
+                st.text(limitation)
         st.download_button('Exporter les actualités en JSON', json.dumps(result, ensure_ascii=False, indent=2),
                            file_name='actualites_officielles.json', mime='application/json', on_click='ignore')

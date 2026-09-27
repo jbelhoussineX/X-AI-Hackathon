@@ -49,19 +49,19 @@ class ErreurInterface(ValueError):
 # 2. STYLE : ne modifier que cette chaîne pour ajuster les couleurs et la typographie.
 STYLE = """
 <style>
-:root { --encre:#173537; --accent:#14766D; --papier:#F7F8F4; --bord:#DCE5DE; }
+:root { --encre:#111111; --accent:#111111; --papier:#FAFAFA; --bord:#DDDDDD; }
 .stApp { background:var(--papier); color:var(--encre); }
-[data-testid="stHeader"] { background:rgba(247,248,244,.94); }
+[data-testid="stHeader"] { background:rgba(250,250,250,.94); }
 .block-container { max-width:1210px; padding-top:2.4rem; padding-bottom:3rem; }
-[data-testid="stSidebar"] { background:#163B3B; }
+[data-testid="stSidebar"] { background:#111111; }
 [data-testid="stSidebar"] .stMarkdown p,
 [data-testid="stSidebar"] .stRadio label p,
-[data-testid="stSidebar"] .stCheckbox label p { color:#E9F4ED; }
-[data-testid="stSidebar"] [data-testid="stCaptionContainer"] p { color:#C4D9D0; }
-[data-testid="stSidebar"] hr { border-color:#365656; }
+[data-testid="stSidebar"] .stCheckbox label p { color:#F5F5F5; }
+[data-testid="stSidebar"] [data-testid="stCaptionContainer"] p { color:#CCCCCC; }
+[data-testid="stSidebar"] hr { border-color:#444444; }
 [data-testid="stSidebar"] [data-testid="stRadio"] label { padding:.35rem 0; }
 .brand { font-size:25px; line-height:1.12; font-weight:750; color:#FFF; letter-spacing:-.7px; }
-.brand em { font-style:normal; color:#AFDBC4; }
+.brand em { font-style:normal; color:#FFFFFF; }
 .brand-tag { color:#BCD3CB; font-size:11px; letter-spacing:2px; margin:14px 0 28px; }
 .eyebrow { font-size:11px; font-weight:750; letter-spacing:2px; color:var(--accent); margin:0 0 12px; }
 .hero-title { font-family:Georgia, 'Times New Roman', serif; font-size:clamp(32px,3.5vw,48px);
@@ -70,8 +70,8 @@ STYLE = """
 .tag { display:inline-block; border:1px solid #C9DCD2; border-radius:20px;
  background:#EBF4ED; padding:5px 11px; font-size:11px; color:#27574A; margin:0 5px 8px 0; }
 .tag-warning { border-color:#E5D6B6; background:#FFF7E5; color:#765714; }
-.safe-text { color:#365052; line-height:1.65; font-size:14px; overflow-wrap:anywhere; white-space:pre-wrap; }
-.safe-small { color:#617472; font-size:12px; line-height:1.55; overflow-wrap:anywhere; white-space:pre-wrap; }
+.safe-text { color:#222222; line-height:1.65; font-size:14px; overflow-wrap:anywhere; white-space:pre-wrap; }
+.safe-small { color:#555555; font-size:12px; line-height:1.55; overflow-wrap:anywhere; white-space:pre-wrap; }
 .doc-title { color:var(--encre); font-size:20px; line-height:1.35; font-weight:650; margin:4px 0 12px; overflow-wrap:anywhere; }
 .card-title { font-size:16px; font-weight:700; color:var(--encre); margin-bottom:8px; }
 .empty { border:1px dashed #B8CFC4; background:#F0F5EF; border-radius:14px; padding:25px; margin:16px 0; }
@@ -88,6 +88,9 @@ STYLE = """
 [data-testid="stBaseButton-secondary"], [data-testid="stBaseButton-secondaryFormSubmit"] {
  background:#FFF; color:var(--encre); border-color:#C9D8CE; border-radius:9px; }
 [data-testid="stButton"] button:hover { border-color:var(--accent); }
+[role="tablist"] { gap:1.5rem; margin-bottom:1rem; }
+[role="tab"][aria-selected="true"] { color:var(--accent); font-weight:700; }
+[data-testid="stExpander"] { border-color:var(--bord); border-radius:10px; }
 .footer { color:#697C77; font-size:11px; border-top:1px solid var(--bord); padding-top:17px; margin-top:36px; }
 @media (max-width:700px) { .block-container { padding:1.5rem 1rem; } .hero-title { font-size:32px; } }
 </style>
@@ -537,9 +540,14 @@ def afficher_resultat(item: dict, prefixe: str = "current") -> None:
 
 # 8. ÉCRAN RECHERCHE : formulaire, résultat et petit historique temporaire.
 def page_recherche(mode: str) -> None:
-    titre_page("RECHERCHE DOCUMENTAIRE / FRANCE", "Un sujet. Des documents. Des repères.", SOUS_TITRE)
+    st.title("Actualités politiques")
     from frontend.recent_activity import render
     render(allow_ai=mode == 'pipelex')
+
+
+def recherche_documents(mode: str) -> None:
+    st.subheader("Explorer les textes de loi")
+    st.caption("Retrouvez des projets et propositions de loi selon leur date de publication, avec leurs sources et interlocuteurs.")
     if mode == "demo":
         st.warning("Mode démonstration : des données fictives pour construire l'interface sans crédits ni clé API.")
     else:
@@ -568,7 +576,7 @@ def page_recherche(mode: str) -> None:
     if item and item["result"]["mode"] == mode:
         afficher_resultat(item)
     else:
-        vide("Tout commence par un sujet précis.", "Saisis quelques mots et une période. Les résultats apparaîtront ici après ton clic. Le mode démonstration permet de tester sans connecter le service de A.")
+        vide("Tout commence par un sujet précis.", "Saisis quelques mots et une période. Les résultats apparaîtront ici après ton clic. Le mode démonstration permet de découvrir un exemple fictif sans appel IA.")
     historique = [x for x in st.session_state["b_history"] if x["result"]["mode"] == mode]
     if historique:
         with st.expander(f"Historique de cette session · {len(historique)}"):
@@ -642,13 +650,14 @@ def page_veilles(mode: str) -> None:
 def page_aide() -> None:
     titre_page("MODE D'EMPLOI", "Comprendre la recherche et ses limites.", "Des résultats sourcés à relire, sans recommandation politique.")
     with st.container(border=True):
-        st.subheader("Déjà disponible")
-        st.write("Formulaire, recherche Pipelex/OpenAI, résultats, extraits, contacts, filtres locaux, export JSON, historique et veilles de session.")
-        st.subheader("À connecter avec A et C")
-        st.write("Sauvegarde SQLite, comparaison entre actualisations et déclenchement quotidien.")
+        st.subheader("Comment rechercher ?")
+        st.write("Saisissez un sujet et choisissez une période : trois mois par défaut. Consultez les événements, filtrez-les par catégorie et ouvrez leurs sources officielles.")
+        st.subheader("Comment obtenir une synthèse ?")
+        st.write("Choisissez « Avec synthèse » dans le menu, puis autorisez et lancez la synthèse depuis les résultats. Cette action utilise des crédits du fournisseur. Aucun appel IA n’est lancé automatiquement.")
+        st.caption("Les résultats restent dans la session. Exportez-les pour les conserver. La recherche s’actualise à votre demande ; aucune surveillance automatique n’est active.")
         st.caption("La collecte officielle parcourt les inventaires du Sénat et de l’Assemblée, puis transmet un corpus limité au modèle. Les dates, les résumés et les versions doivent être relus.")
     with st.expander("Comprendre les sources et les dates"):
-        st.write("La collecte officielle repère les dossiers selon leur dépôt initial ; le rapport contrôle ensuite la date de publication. Assemblée : archives des 15e, 16e et 17e législatures selon la période, depuis le début de la 15e législature en juin 2017. Trois notices au plus par institution et par collecte, puis quatre documents au plus dans le rapport. Les extraits sont recherchés dans le texte collecté, ce qui ne valide pas leur interprétation.")
+        st.write("La période filtre les événements datés : étapes législatives, publications, amendements et débats. Un texte ancien peut avoir une évolution récente. La date d’une séance ou d’une étape est distincte de la date de publication. La collecte est partielle : consultez la couverture et les limites sous les résultats.")
         st.write("Une source citée n'est pas automatiquement une source vérifiée. L'étape de procédure, le résumé et le contact peuvent avoir des preuves différentes.")
         st.write("La date d'exécution indique quand la requête s'est terminée. Elle ne prouve pas que chaque page a été revérifiée indépendamment.")
     with st.expander("Données et confidentialité"):
@@ -672,20 +681,18 @@ def main() -> None:
     st.set_page_config(page_title=NOM_APPLICATION, page_icon="📑", layout="wide", initial_sidebar_state="expanded")
     st.markdown(STYLE, unsafe_allow_html=True)
     initialiser_etat(st.session_state)
+    if st.session_state["b_page"] not in ("Recherche", "Aide"):
+        st.session_state["b_page"] = "Recherche"
     with st.sidebar:
-        st.markdown('<div class="brand">sed<br><em>lex.</em></div><div class="brand-tag">CHERCHER · COMPRENDRE · SUIVRE</div>', unsafe_allow_html=True)
-        st.radio("Navigation", ["Recherche", "Mes veilles", "Aide"], key="b_page")
+        st.markdown('<div class="brand">sed <em>lex.</em></div>', unsafe_allow_html=True)
         st.divider()
-        st.radio("Source des résultats", ["demo", "pipelex"], key="b_mode",
-                 format_func=lambda x: "Démonstration · sans IA" if x == "demo" else "Recherche réelle · Pipelex")
+        st.radio("Navigation", ["Recherche", "Aide"], key="b_page", label_visibility="collapsed")
+        st.divider()
+        st.radio("Synthèse IA", ["demo", "pipelex"], key="b_mode",
+                 format_func=lambda x: "Sans synthèse" if x == "demo" else "Avec synthèse")
         mode = st.session_state["b_mode"]
-        if mode == "pipelex":
-            st.checkbox("J'autorise cette recherche à utiliser les crédits du fournisseur configuré lors de mon clic.", key="b_consent")
-            st.caption(f"Essais réels dans cette session : {st.session_state['b_live_attempts']}/{MAX_APPELS_SESSION}. Ce compteur n'est pas un plafond fournisseur.")
-        else:
-            st.caption("Aucune clé nécessaire. Toutes les fiches d'exemple sont inventées.")
         st.divider()
-        st.caption("Interface B · prototype local\n\nBase et actualisation quotidienne : à connecter.")
+        st.caption("Sources officielles\n\nAssemblée nationale · Sénat")
     # Un message d'erreur ou résultat de l'autre mode ne doit pas sembler appartenir au mode actuel.
     if st.session_state.get("b_previous_mode", mode) != mode:
         st.session_state["b_error"] = None
@@ -693,11 +700,9 @@ def main() -> None:
     page = st.session_state["b_page"]
     if page == "Recherche":
         page_recherche(mode)
-    elif page == "Mes veilles":
-        page_veilles(mode)
     else:
         page_aide()
-    st.markdown('<div class="footer">SED LEX · Prototype de hackathon · Informations sourcées, sans recommandation politique · Pas de veille automatique dans cette version.</div>', unsafe_allow_html=True)
+    st.caption("Sed Lex · Sources officielles · Recherche à la demande")
 
 
 if __name__ == "__main__":

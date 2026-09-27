@@ -94,3 +94,34 @@ def test_calendar_months(monkeypatch, today, months, start):
     output = search_recent('logement', months=months, today=today)
     assert output['start'] == start
     assert output['end'] == today.isoformat()
+
+
+def test_filters_and_sort_preserve_corpus_without_new_calls(monkeypatch):
+    common = dict(event='Événement fictif', decision=None, provider='senat',
+                  retrieved_at='2026-09-27T12:00:00Z', date_kind='publication',
+                  dossier_url='https://www.senat.fr/', source_url='https://www.senat.fr/',
+                  source_location='Test')
+    result = dict(topic='logement', start='2026-06-27', end='2026-09-27',
+                  collected_at='2026-09-27T12:00:00Z', datasets=[], limitations=['Test fictif.'],
+                  events=[dict(common, title='Ancien', category='debat', event_date='2026-07-01'),
+                          dict(common, title='Récent', category='procedure', event_date='2026-09-01')])
+    fetch = Mock(return_value=result)
+    generate = Mock(side_effect=AssertionError('Pas d’appel IA'))
+    monkeypatch.setattr('frontend.recent_activity.search_recent', fetch)
+    monkeypatch.setattr('frontend.recent_activity.build', generate)
+    app = AppTest.from_string('from frontend.recent_activity import render\nrender()').run()
+    app.text_input(key='recent_topic').set_value('logement')
+    app.button[0].click().run()
+    titles = lambda: [title for item in app.markdown for title in ('Ancien', 'Récent')
+                      if f'>{title}</div>' in item.value]
+    assert titles() == ['Récent', 'Ancien']
+    app.selectbox(key='recent_order').set_value('Plus anciens d’abord').run()
+    assert titles() == ['Ancien', 'Récent']
+    app.multiselect(key='recent_categories').set_value(['debat']).run()
+    assert titles() == ['Ancien']
+    assert len(app.session_state['recent_result']['events']) == 2
+    assert not app.exception
+    fetch.assert_called_once()
+    generate.assert_not_called()
+    app.button[0].click().run()
+    assert app.multiselect(key='recent_categories').value == []

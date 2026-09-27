@@ -19,11 +19,10 @@ def test_app_navigation_and_demo_never_call_service(monkeypatch):
     monkeypatch.setattr('src.service.search', service)
     app = AppTest.from_file(str(ROOT / 'app.py')).run()
     assert not app.exception
-    app.text_input(key='b_topic').set_value('Sujet fictif')
-    next(button for button in app.button if button.label == "Afficher l'exemple fictif").click().run()
-    assert not app.exception
-    assert app.session_state['b_last']['result']['mode'] == 'demo'
-    app.radio(key='b_page').set_value('Mes veilles').run()
+    assert not app.tabs
+    assert [field.key for field in app.text_input] == ['recent_topic']
+    assert not any(heading.value.startswith('1.') for heading in app.subheader)
+    assert app.radio(key='b_page').options == ['Recherche', 'Aide']
     app.radio(key='b_page').set_value('Aide').run()
     assert not app.exception
     service.assert_not_called()
@@ -35,8 +34,14 @@ def test_live_requires_click_and_does_not_repeat_on_rerun(monkeypatch):
     result['mode'] = 'pipelex'  # Mock explicite du test, jamais un repli de l'application.
     service = Mock(return_value=result)
     monkeypatch.setattr('src.service.search', service)
-    app = AppTest.from_file(str(ROOT / 'app.py')).run()
-    app.radio(key='b_mode').set_value('pipelex').run()
+    # Le formulaire historique reste testé isolément, sans être exposé sur l’accueil.
+    app = AppTest.from_string('''
+import streamlit as st
+from frontend.interface_b import initialiser_etat, recherche_documents
+initialiser_etat(st.session_state)
+st.checkbox('Consentement', key='b_consent')
+recherche_documents('pipelex')
+''').run()
     service.assert_not_called()
     app.text_input(key='b_topic').set_value('Sujet fictif')
     app.checkbox(key='b_consent').check().run()
