@@ -3,7 +3,11 @@ from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from html.parser import HTMLParser
+import json
+from pathlib import Path
 import re
+import subprocess
+import sys
 from time import monotonic
 import unicodedata
 from urllib.parse import urljoin, urlsplit
@@ -15,6 +19,31 @@ HOSTS = frozenset({'assemblee-nationale.fr', 'www.assemblee-nationale.fr',
                    'senat.fr', 'www.senat.fr', 'legifrance.gouv.fr', 'www.legifrance.gouv.fr'})
 MAX_BYTES = 2_000_000
 MAX_PAGES = 8
+
+
+@dataclass(frozen=True)
+class FetchedSource:
+    status: str
+    text: str
+    final_url: str
+    pages: list | None = None
+
+
+def read_pdf(body, deadline):
+    remaining = deadline - monotonic()
+    if remaining <= 0:
+        return {'status': 'budget_exceeded', 'pages': []}
+    try:
+        process = subprocess.run(
+            [sys.executable, str(Path(__file__).with_name('pdf_text_worker.py'))],
+            input=body, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            timeout=min(8, remaining), check=True,
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0)
+        return json.loads(process.stdout)
+    except subprocess.TimeoutExpired:
+        return {'status': 'pdf_timeout', 'pages': []}
+    except (OSError, subprocess.CalledProcessError, ValueError):
+        return {'status': 'pdf_extraction_error', 'pages': []}
 
 
 def allowed_url(url):
@@ -60,38 +89,41 @@ def fetch_text(client, url, deadline):
     current = url
     for _ in range(4):
         if not allowed_url(current):
-            return 'domain_not_allowed', '', current
+            return FetchedSource('domain_not_allowed', '', current)
         remaining = deadline - monotonic()
         if remaining <= 0:
-            return 'budget_exceeded', '', current
+            return FetchedSource('budget_exceeded', '', current)
         try:
             with client.stream('GET', current, timeout=min(8, remaining)) as response:
                 if response.status_code in (301, 302, 303, 307, 308):
                     current = urljoin(current, response.headers.get('location', ''))
                     continue
                 if response.status_code != 200:
-                    return 'http_error', '', current
+                    return FetchedSource('http_error', '', current)
                 media = response.headers.get('content-type', '').split(';')[0].strip().lower()
-                if media not in ('text/html', 'application/xhtml+xml', 'text/plain'):
-                    return 'unsupported_format', '', current
+                if media not in ('text/html', 'application/xhtml+xml', 'text/plain', 'application/pdf'):
+                    return FetchedSource('unsupported_format', '', current)
                 body = bytearray()
                 for chunk in response.iter_bytes():
                     if monotonic() > deadline:
-                        return 'budget_exceeded', '', current
+                        return FetchedSource('budget_exceeded', '', current)
                     body.extend(chunk)
                     if len(body) > MAX_BYTES:
-                        return 'too_large', '', current
+                        return FetchedSource('too_large', '', current)
+                if media == 'application/pdf':
+                    pdf = read_pdf(bytes(body), deadline)
+                    return FetchedSource(pdf['status'], '', current, pdf['pages'])
                 decoded = bytes(body).decode(response.encoding or 'utf-8', errors='replace')
                 if media != 'text/plain':
                     parser = PageText()
                     parser.feed(decoded)
                     decoded = ''.join(parser.parts)
                 if not normalize(decoded):
-                    return 'empty_page', '', current
-                return 'retrieved', decoded, current
+                    return FetchedSource('empty_page', '', current)
+                return FetchedSource('retrieved', decoded, current)
         except (httpx.HTTPError, UnicodeError, LookupError):
-            return 'unavailable', '', current
-    return 'redirect_limit', '', current
+            return FetchedSource('unavailable', '', current)
+    return FetchedSource('redirect_limit', '', current)
 
 
 @dataclass(frozen=True)
@@ -108,7 +140,7 @@ def verify_sources(report, *, transport=None):
     validate_dust_report(report)
     result = deepcopy(report)
     checks = []
-    cache = {}
+    cache: dict[str, FetchedSource] = {}
     deadline = monotonic() + 30
     with httpx.Client(transport=transport, follow_redirects=False, trust_env=False,
                       headers={'User-Agent': 'ReperesCitoyens-Hackathon/0.1'}) as client:
@@ -117,15 +149,22 @@ def verify_sources(report, *, transport=None):
                 for evidence_index, evidence in enumerate(entity['evidence'], 1):
                     url = evidence['url']
                     if url not in cache:
-                        cache[url] = (('budget_exceeded', '', url) if len(cache) >= MAX_PAGES
+                        cache[url] = (FetchedSource('budget_exceeded', '', url) if len(cache) >= MAX_PAGES
                                       else fetch_text(client, url, deadline))
-                    status, page, final_url = cache[url]
+                    source = cache[url]
+                    status, final_url = source.status, source.final_url
+                    matched_page = None
                     if status == 'retrieved':
                         excerpt = evidence['excerpt']
-                        status = ('matched' if excerpt in page else
-                                  'matched_whitespace' if normalize(excerpt) in normalize(page) else 'not_found')
+                        status = 'not_found'
+                        for page_number, page in enumerate(source.pages if source.pages is not None else [source.text], 1):
+                            if excerpt in page or normalize(excerpt) in normalize(page):
+                                status = 'matched' if excerpt in page else 'matched_whitespace'
+                                matched_page = page_number if source.pages is not None else None
+                                break
                     check = {'entity_type': kind, 'entity_index': index, 'evidence_index': evidence_index,
                              'url': url, 'final_url': final_url, 'status': status,
+                             'pdf_page': matched_page,
                              'checked_at': datetime.now(timezone.utc).isoformat()}
                     checks.append(check)
                     if status not in ('matched', 'matched_whitespace'):
@@ -139,5 +178,7 @@ def verify_sources(report, *, transport=None):
         f'Contrôle des sources : {count}/{len(checks)} extraits retrouvés dans les pages récupérées. '
         'Seuls les espaces et la composition Unicode peuvent être normalisés. '
         'Ce contrôle ne certifie ni le sens de la citation, ni la date, ni l’actualité du statut. '
-        'PDF et pages nécessitant JavaScript non pris en charge.')
+        'PDF : contrôle de la couche texte uniquement, sans OCR ni validation visuelle ; '
+        'les extraits traversant plusieurs pages ne sont pas rapprochés. '
+        'Pages nécessitant JavaScript non prises en charge.')
     return SourceVerification(result, checks)

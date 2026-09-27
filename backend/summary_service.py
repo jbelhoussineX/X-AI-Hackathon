@@ -77,7 +77,7 @@ def synthesize_report(topic: str, report: dict, analyze) -> dict:
         doc['uncertainties'].extend(item['limitations'])
     original['limitations'].append(
         'Synthèse reformulée par Pipelex à partir des extraits transmis par Dust ; '
-        'sans nouvelle recherche ni vérification indépendante des pages. '
+        'le modèle ne fait aucune recherche ni vérification supplémentaire des pages. '
         'Les références contrôlées ne garantissent pas la justesse de l’interprétation.')
     validate_dust_report(original)
     return original

@@ -23,7 +23,8 @@ python -m venv .venv
 Le mode **Démonstration** utilise des fiches fictives, sans clé et sans appel IA.
 La page existante de l'équipe est conservée. Son formulaire est raccordé à
 `src.service.search(topic, start, end, mode='dust')` ; les appels réels restent
-désactivés par défaut et n'ont pas été testés en réel.
+désactivés par défaut. Le parcours Dust complet n'a pas encore été testé en réel ;
+la synthèse Pipelex seule a réussi un premier essai sur données fictives.
 
 ## Configuration
 
@@ -41,7 +42,8 @@ Ne pas activer `ENABLE_PIPELEX_CALLS` tant qu'un essai n'a pas été autorisé.
 - Interface Streamlit : recherche, fiches, preuves, contacts, export, veilles de session.
 - Dust : contrat JSON et client préparés, filtre de dates côté service, appels désactivés.
 - Pipelex : synthèse par centre d'intérêt raccordée au service, types Pydantic et
-  contrôles de références. Exécution désactivée ; qualité du modèle non testée.
+  contrôles de références. Exécution désactivée par défaut ; un cas fictif évalué,
+  sans garantie de qualité générale du modèle.
 - SQLite : stockage transactionnel et actualisations simulées testés ; pas encore reliés
   aux veilles de session de l'interface.
 - À faire : vérifier avec le coéquipier Dust un rapport réel et ses sources,
@@ -83,13 +85,15 @@ X-AI-Hackathon/
 .\.venv\Scripts\python.exe -m mypy backend/pipelex_comparison.py backend/clients.py backend/generated backend/dust/client.py src/service.py
 ```
 
-75 tests avec les dépendances UI installées, dont interactions de démonstration
+84 tests avec les dépendances UI installées, dont interactions de démonstration
 Streamlit et clients simulés. Aucun de ces tests n'exécute Dust ou Pipelex.
 Les fichiers générés ne doivent pas être modifiés à la main.
 
 Le [contrôle des sources](backend/SOURCES.md) recherche les extraits Dust dans
-les pages officielles avant la synthèse. Les sources non confirmées sont signalées
-et empêchent l'appel Pipelex. Les tests HTTP sont simulés, sans recherche réelle.
+les pages officielles HTML et les PDF contenant du texte avant la synthèse.
+Les sources non confirmées sont signalées et empêchent l'appel Pipelex.
+Les tests automatiques HTTP sont simulés. Un contrôle manuel a aussi réussi sur
+les versions HTML/PDF d'un texte du Sénat, sans appel IA.
 Un [premier essai Pipelex](methods/political_summary/TEST_RESULT.md) a réussi sur
 un rapport fictif ; le parcours avec un rapport Dust réel reste à vérifier.
 

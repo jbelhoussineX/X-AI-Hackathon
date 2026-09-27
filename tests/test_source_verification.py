@@ -63,8 +63,8 @@ class SourceTests(unittest.TestCase):
             self.assertFalse(allowed_url(url), url)
         self.assertTrue(allowed_url('https://www.senat.fr/dossier-legislatif/test.html'))
 
-    def test_pdf_and_http_errors_not_claimed_verified(self):
-        for response, expected in [(httpx.Response(200, content=b'%PDF', headers={'content-type':'application/pdf'}), 'unsupported_format'),
+    def test_invalid_pdf_and_http_errors_not_claimed_verified(self):
+        for response, expected in [(httpx.Response(200, content=b'%PDF', headers={'content-type':'application/pdf'}), 'invalid_pdf'),
                                    (httpx.Response(403), 'http_error')]:
             result = self.verify(lambda _: response)
             self.assertEqual(result.checks[0]['status'], expected)

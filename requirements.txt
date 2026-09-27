@@ -2,3 +2,4 @@ pipelex-sdk==0.10.2
 pydantic==2.13.5
 httpx==0.28.1
 mypy==1.20.2
+pypdf==6.19.0
