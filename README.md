@@ -1,4 +1,4 @@
-# X-AI-Hackathon — Repères citoyens
+# X-AI-Hackathon — Sed Lex
 
 Agent de recherche documentaire sur les politiques françaises, développé pour un
 hackathon de trois jours. L’utilisateur choisit un sujet et une période ; le
@@ -24,8 +24,8 @@ Le mode **Démonstration** fonctionne sans clé ni réseau, avec des fiches fict
 Le mode **Recherche réelle · Pipelex** appelle
 `src.service.search(topic, start, end, mode='pipelex')` après clic et consentement.
 Par défaut, les inventaires officiels Sénat et Assemblée sont téléchargés sans IA,
-puis les pages pertinentes sont collectées. Un seul appel de synthèse est demandé
-si le corpus n'est pas vide. Aucune synthèse n'est demandée si la collecte est vide.
+puis les pages pertinentes sont collectées. En mode hébergé, un appel de synthèse est demandé si le corpus n'est pas vide ;
+en mode local, deux appels OpenAI évaluent les manques puis rédigent le rapport. Aucune synthèse n'est demandée si la collecte est vide.
 Les extraits sont contrôlés dans le corpus exact transmis. Il n’y a ni relance automatique, ni planification.
 Ce nombre d’exécutions ne constitue pas un plafond de facturation fournisseur.
 
@@ -188,3 +188,15 @@ Validation : 262 tests et 28 sous-tests passent ; mypy valide les deux collecteu
 
 Références : https://www.senat.fr/flux-rss.html et
 https://data.assemblee-nationale.fr/foire-aux-questions .
+
+## Archives parlementaires
+
+La collecte couvre les 15e, 16e et 17e législatures de l’Assemblée selon la période,
+ainsi que le Sénat. Le repérage reste lexical, avec trois notices par institution
+et par collecte, puis quatre documents au maximum dans le rapport.
+Le mode local peut demander un complément de collecte sans recherche web payante.
+Un catalogue des notices est exportable sans IA :
+
+```powershell
+.\.venv\Scripts\python.exe -m backend.data_sources.catalogue --output data/local/catalogue-depuis-15e.json
+```

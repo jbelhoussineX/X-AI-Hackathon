@@ -9,6 +9,7 @@ __pycache__/
 private/
 *.log
 results/
+data/local/
 
 # Règles supplémentaires du dépôt partagé.
 venv/

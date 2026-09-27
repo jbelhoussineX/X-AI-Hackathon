@@ -1,4 +1,4 @@
-"""Interface B de Repères citoyens — à lancer avec Streamlit.
+"""Interface B de Sed Lex — à lancer avec Streamlit.
 
 Commande : python -m streamlit run interface_b.py --server.address 127.0.0.1
 Ce fichier peut fonctionner SEUL en démonstration, sans clé, sans Dust ni Pipelex.
@@ -25,7 +25,7 @@ try:
 except ModuleNotFoundError:
     st = None  # Les tests de logique restent exécutables sans installer Streamlit.
 
-NOM_APPLICATION = "Repères citoyens"
+NOM_APPLICATION = "Sed Lex"
 SOUS_TITRE = "Des sujets qui vous concernent. Des sources pour comprendre."
 MAX_VEILLES = 12
 MAX_HISTORIQUE = 10
@@ -544,11 +544,13 @@ def page_recherche(mode: str) -> None:
         st.warning("Mode démonstration : des données fictives pour construire l'interface sans crédits ni clé API.")
     else:
         st.info("Recherche dans les sources officielles, puis synthèse par IA. Les crédits du fournisseur configuré sont utilisés uniquement après ton clic. La couverture reste limitée.")
+        st.caption("Commence par un mot-clé, par exemple logement, transport ou énergie. Le repérage est lexical et sa couverture reste limitée.")
+        st.caption("Archives consultables depuis juin 2017 : Assemblée (15e à 17e législatures) et Sénat. Le rapport présente au plus quatre documents.")
     with st.form("b_search_form"):
         st.subheader("Quel sujet souhaites-tu explorer ?")
-        sujet = st.text_input("Sujet de recherche", max_chars=300, placeholder="Ex. : accessibilité des transports publics", key="b_topic")
+        sujet = st.text_input("Sujet de recherche", max_chars=300, placeholder="Ex. : logement", key="b_topic")
         a, b, c = st.columns([1, 1, 1])
-        debut = a.date_input("Publié à partir du", value=date(2024, 1, 1), key="b_start")
+        debut = a.date_input("Publié à partir du", value=date(2017, 6, 21), key="b_start")
         fin = b.date_input("Publié jusqu'au", value=date.today(), key="b_end")
         c.text_input("Territoire", value="France", disabled=True)
         st.caption("Première version : textes parlementaires. La période filtre la publication, pas la dernière étape de procédure. Ne saisis pas de données personnelles.")
@@ -588,7 +590,7 @@ def page_veilles(mode: str) -> None:
         with st.form("b_watch_form"):
             sujet = st.text_input("Sujet à suivre", max_chars=300, key="b_watch_topic")
             a, b = st.columns(2)
-            debut = a.date_input("Début de la période de publication", value=date(2024, 1, 1), key="b_watch_start")
+            debut = a.date_input("Début de la période de publication", value=date(2017, 6, 21), key="b_watch_start")
             fin = b.date_input("Fin de la période de publication", value=date.today(), key="b_watch_end")
             st.caption("Cette période reste fixe lors d'une actualisation manuelle. Le suivi jusqu'à la date du jour sera à définir avec A.")
             submit = st.form_submit_button("Ajouter une veille de session", type="primary")
@@ -646,6 +648,7 @@ def page_aide() -> None:
         st.write("Sauvegarde SQLite, comparaison entre actualisations et déclenchement quotidien.")
         st.caption("La collecte officielle parcourt les inventaires du Sénat et de l’Assemblée, puis transmet un corpus limité au modèle. Les dates, les résumés et les versions doivent être relus.")
     with st.expander("Comprendre les sources et les dates"):
+        st.write("La collecte officielle repère les dossiers selon leur dépôt initial ; le rapport contrôle ensuite la date de publication. Assemblée : archives des 15e, 16e et 17e législatures selon la période, depuis le début de la 15e législature en juin 2017. Trois notices au plus par institution et par collecte, puis quatre documents au plus dans le rapport. Les extraits sont recherchés dans le texte collecté, ce qui ne valide pas leur interprétation.")
         st.write("Une source citée n'est pas automatiquement une source vérifiée. L'étape de procédure, le résumé et le contact peuvent avoir des preuves différentes.")
         st.write("La date d'exécution indique quand la requête s'est terminée. Elle ne prouve pas que chaque page a été revérifiée indépendamment.")
     with st.expander("Données et confidentialité"):
@@ -670,7 +673,7 @@ def main() -> None:
     st.markdown(STYLE, unsafe_allow_html=True)
     initialiser_etat(st.session_state)
     with st.sidebar:
-        st.markdown('<div class="brand">repères<br><em>citoyens.</em></div><div class="brand-tag">CHERCHER · COMPRENDRE · SUIVRE</div>', unsafe_allow_html=True)
+        st.markdown('<div class="brand">sed<br><em>lex.</em></div><div class="brand-tag">CHERCHER · COMPRENDRE · SUIVRE</div>', unsafe_allow_html=True)
         st.radio("Navigation", ["Recherche", "Mes veilles", "Aide"], key="b_page")
         st.divider()
         st.radio("Source des résultats", ["demo", "pipelex"], key="b_mode",
@@ -694,7 +697,7 @@ def main() -> None:
         page_veilles(mode)
     else:
         page_aide()
-    st.markdown('<div class="footer">REPÈRES CITOYENS · Prototype de hackathon · Informations sourcées, sans recommandation politique · Pas de veille automatique dans cette version.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="footer">SED LEX · Prototype de hackathon · Informations sourcées, sans recommandation politique · Pas de veille automatique dans cette version.</div>', unsafe_allow_html=True)
 
 
 if __name__ == "__main__":

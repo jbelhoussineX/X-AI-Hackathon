@@ -66,9 +66,13 @@ uniquement un rapport JSON contrôlé ou un code d'erreur public.
 
 Le parcours Pipelex possède quatre étapes :
 
-1. Chercher des textes et des preuves avec l'outil web OpenAI.
+1. Télécharger les inventaires Sénat/Assemblée et les pages officielles (mode par défaut).
+   L'Assemblée couvre les archives des 15e, 16e et 17e législatures selon la période ;
+   le formulaire commence au 21 juin 2017, pour inclure toute la 15e législature. Trois notices par institution et par
+   collecte sont présélectionnées. Le [catalogue sans limite de résultats](../backend/data_sources/README.md)
+   s'exporte séparément sans appel IA.
 2. Faire déterminer par un LLM si des dates, statuts ou preuves manquent.
-3. Exécuter au plus un complément si la décision structurée le demande.
+3. Exécuter au plus une collecte complémentaire avec un autre mot-clé si le LLM le décide.
 4. Produire le rapport selon `schemas/report.schema.json` et le contrôler.
 
 La signature `search(topic, start, end, mode)` et l'enveloppe de résultats restent
@@ -80,19 +84,21 @@ rapport et `CONTRACT.md` n'ont pas été modifiés.
 
 | Étape | Modèle | Limites applicatives |
 |---|---|---|
-| Recherche initiale et éventuel complément | `gpt-5-mini`, raisonnement `low` | 4 000 tokens de sortie, raisonnement compris, par réponse ; au plus 3 appels d'outil web par réponse |
+| Collecte officielle initiale et complément | Aucun modèle | 60 000 caractères pour le corpus réuni |
+| Recherche en mode `web` seulement | `gpt-5-mini`, raisonnement `low` | 4 000 tokens de sortie par réponse ; au plus 3 appels d’outil web |
 | Évaluation des manques | `gpt-4o-mini` | 700 tokens de sortie |
 | Rapport final | `gpt-4o-mini` | 6 000 tokens de sortie |
 
-Une recherche réussie comporte 3 ou 4 requêtes de modèle. Le code refuse une
+Le mode officiel comporte deux requêtes de modèle, ou zéro si le corpus initial
+est vide. Le mode `web` comporte 3 ou 4 requêtes. Le code refuse une
 cinquième requête. Le SDK utilise `max_retries=0` et ne suit pas les redirections.
-Les appels de recherche imposent l'outil web ; un récit sans appel d'outil
+En mode `web`, les appels de recherche imposent l'outil web ; un récit sans appel d'outil
 authentifié dans la réponse ne suffit pas. Les domaines sont limités à
 `assemblee-nationale.fr`, `senat.fr`, `legifrance.gouv.fr` et `vie-publique.fr`.
 
 Ces limites ne fixent pas un montant en euros : les tokens d'entrée et les outils
 web comptent aussi. Le client attend au plus 70 secondes par appel ; le processus
-local est limité à 240 secondes. Un arrêt local ne garantit pas l'annulation du
+local est limité à 420 secondes pour laisser place aux téléchargements officiels. Un arrêt local ne garantit pas l'annulation du
 traitement distant. Ne pas relancer immédiatement après un timeout.
 
 Les réponses OpenAI demandent `store=False`. Cela ne constitue pas une promesse
@@ -110,7 +116,8 @@ simulent ce transport réel du SDK.
 La structure, les dates, les relations entre identifiants et la présence des URL
 de preuve dans les sources renvoyées par l'outil sont contrôlées. Une date connue
 hors période entraîne le refus du rapport ; une date inconnue est signalée.
-Une URL présente dans la trace de recherche n'atteste ni de l'exactitude d'une
+En mode officiel, chaque extrait est recherché dans le texte collecté, sans
+nouveau téléchargement lors de la vérification. En mode web, une URL présente dans la trace de recherche n'atteste ni de l'exactitude d'une
 affirmation, ni de la fidélité mot à mot d'un extrait. Relire les pages avant la
 démo. Le corpus limité peut exclure des organismes ou associations pertinents.
 
@@ -120,15 +127,17 @@ démo. Le corpus limité peut exclure des organismes ou associations pertinents.
 PYTHON_DOTENV_DISABLED=1 DO_NOT_TRACK=1 python -m pytest -q
 ```
 
-116 tests réussis : contrôles historiques, vrai moteur Pipelex avec réponses HTTP
+162 tests réussis : contrôles historiques, archives 15/16/17 et catalogue, vrai moteur Pipelex avec réponses HTTP
 simulées (avec et sans complément), refus des sources non consultées, limite
 d'appels, erreurs sans repli, absence d'appel pendant la navigation Streamlit,
 recherche sur clic et absence de répétition au rafraîchissement.
 
 Les tests du moteur bloquent les connexions réseau et emploient un identifiant
-factice. Cette suite hors ligne n'utilise pas les crédits API. Le parcours web
-avec le nouveau modèle reste à vérifier avec autorisation ; le diagnostic réel
-décrit ci-dessous ne constitue pas une validation du parcours complet.
+factice. Cette suite hors ligne n'utilise pas les crédits API. Le mode web a
+fonctionné lors d'un essai utilisateur. Les quatre exports officiels ont été
+téléchargés le 27 septembre 2026 : 9 384 notices depuis le 21 juin 2017, incluant les 2 927 notices reconnues de la 15e, dans le catalogue local.
+La génération IA sur la couverture historique reste à vérifier en réel.
+Les diagnostics ci-dessous documentent les corrections précédentes.
 
 ## Diagnostic des échecs
 
@@ -178,7 +187,7 @@ Les contrôles du contrat sont inchangés ; aucune correction de fait ni suppres
 silencieuse n'est effectuée par le validateur. Les limites de consommation restent
 identiques et aucun appel supplémentaire de réparation n'est ajouté.
 
-Les **116 tests hors ligne** incluent les échecs simulés de rédaction jusqu'au
+Les **153 tests hors ligne** incluent les échecs simulés de rédaction jusqu'au
 message public, sans relance et sans fuite du contenu brut. Pour contrôler depuis
 Streamlit, utiliser le mode Pipelex et lancer volontairement une recherche réelle
 (consomme des crédits), puis relever le champ « Motif » en cas de refus. Cette
@@ -224,9 +233,9 @@ Une troncature de la collecte initiale ou du rapport, un timeout, un filtre du
 fournisseur ou toute autre erreur continue d'arrêter le parcours. Ce comportement
 a été testé avec le moteur Pipelex et des réponses HTTP simulées, sans appel réel.
 
-Le travail de collecte directe de l'équipe a été examiné séparément : voir
-[la revue des sources officielles](REVUE_SOURCES_OFFICIELLES.md). Il n'a pas été
-fusionné dans cette copie locale.
+Le travail de collecte directe de l'équipe est maintenant intégré : voir
+[le collecteur officiel](../backend/data_sources/README.md). La
+[revue initiale](REVUE_SOURCES_OFFICIELLES.md) conserve les constats avant intégration.
 
 ### Page de contact sans preuve dédiée
 

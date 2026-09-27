@@ -4,7 +4,7 @@
 Application locale Python/Streamlit, un agent Dust avec recherche web, Codex sur les trois ordinateurs.
 Première version : textes parlementaires français, étape de procédure sourcée, pages de contact publiques.
 Pas de compte utilisateur, d'hébergement, d'envoi automatique, de classement politique ou de reconnaissance vocale.
-Le nom « Repères citoyens » est provisoire.
+Le nom de l’application est « Sed Lex ».
 
 ## Responsabilités
 | Personne | Responsabilité | Livrable observable |

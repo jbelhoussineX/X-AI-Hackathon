@@ -19,8 +19,10 @@ def prepare(topic: str, start: str, end: str, *, transport=None) -> dict:
     records: list[dict] = []
     limits = ['Repérage lexical sur titres/thèmes, avec filtre sur le dépôt initial, '
               'distinct de la date de publication contrôlée ensuite dans le rapport.',
-              'Couverture Sénat et notices de la 17e législature de l’Assemblée ; '
+              'Couverture Sénat et notices des 15e, 16e et 17e législatures de l’Assemblée selon la période ; '
               'aucune prétention d’exhaustivité ou de vigueur actuelle.',
+              'Au plus trois notices par institution et par collecte sont lues, '
+              'parmi les correspondances lexicales les plus récentes ; le rapport contient au plus quatre documents.',
               'L’API Légifrance/PISTE n’est pas connectée ; aucun statut de droit en vigueur n’est certifié.']
     senate_corpus: list[dict] = []
     assembly_corpus: list[dict] = []
@@ -36,18 +38,21 @@ def prepare(topic: str, start: str, end: str, *, transport=None) -> dict:
         limits.append('Source Sénat indisponible ou format non reconnu ; aucune donnée inventée en remplacement.')
     try:
         selected = assembly.inventory(topic, start, end, transport=transport)
-        datasets.append(dict(selected['dataset'], provider='assemblee', status='ok'))
+        datasets.extend(selected['datasets'])
+        for dataset in selected['datasets']:
+            if dataset['status'] != 'ok':
+                limits.append(f"Archive Assemblée {dataset['legislature']}e législature indisponible ; couverture partielle.")
+        if start < '2017-06-21':
+            limits.append('Les législatures antérieures à la 15e ne sont pas couvertes côté Assemblée (avant juin 2017).')
         records.extend(dict(r, provider='assemblee') for r in selected['records'])
         # Reuse the same bounded URL/page verifier as the existing web route.
-        from backend.generated.political_search.models import SearchResult
-        from backend.pipelex_research import collect_sources
+        from backend.data_sources.pages import collect_sources
         urls = []
         for record in selected['records']:
             urls.append(record['document_url'])
             if record['dossier_url']:
                 urls.append(record['dossier_url'])
-        candidates = SearchResult.model_validate({'answer': '', 'sources': [{'url': u} for u in urls]})
-        assembly_corpus, _, issues = collect_sources(candidates, transport=transport)
+        assembly_corpus, _, issues = collect_sources(urls, transport=transport)
         limits.extend(issues)
     except (httpx.HTTPError, ValueError, UnicodeError, zipfile.BadZipFile, RuntimeError) as exc:
         datasets.append({'provider': 'assemblee', 'status': 'unavailable', 'error_type': type(exc).__name__})
@@ -97,6 +102,45 @@ def fetched_corpus(corpus: list) -> dict[str, FetchedSource]:
         source = FetchedSource('retrieved', item['text'], item['final_url'], item['pdf_pages'])
         result[item['url']] = source
         result.setdefault(item['final_url'], source)
+    return result
+
+
+def merge_prepared(initial: dict, supplement: dict) -> dict:
+    """Keep the initial corpus and add unique supplemental pages within the same cap."""
+    from copy import deepcopy
+    result = deepcopy(initial)
+    result['limitations'].extend(supplement['limitations'])
+    result['datasets'].extend(supplement['datasets'])
+    result['records'].extend(supplement['records'])
+    seen = {item['url'] for item in result['corpus']}
+    remaining = 60_000 - sum(len(item['text']) + sum(map(len, item['pdf_pages'] or []))
+                             for item in result['corpus'])
+    for source in supplement['corpus']:
+        if source['url'] in seen:
+            continue
+        if remaining <= 0:
+            result['limitations'].append('Complément non transmis : limite globale de 60 000 caractères atteinte.')
+            break
+        item = deepcopy(source)
+        pages = item['pdf_pages'] if item['pdf_pages'] is not None else [item['text']]
+        clipped = []
+        for page in pages:
+            clipped.append(page[:remaining])
+            remaining -= len(clipped[-1])
+            if remaining <= 0:
+                break
+        truncated = sum(map(len, clipped)) < sum(map(len, pages))
+        item['truncated'] = item['truncated'] or truncated
+        item['text'] = clipped[0] if item['pdf_pages'] is None else ''
+        item['pdf_pages'] = clipped if item['pdf_pages'] is not None else None
+        item['content_sha256'] = hashlib.sha256(json.dumps(
+            {'text': item['text'], 'pdf_pages': item['pdf_pages']}, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+        if truncated:
+            result['limitations'].append('Complément transmis partiellement : ' + item['url'])
+        result['corpus'].append(item)
+        seen.add(item['url'])
+    # This envelope is regenerated from the exact merged corpus.
+    result['pipelex_inputs'] = None
     return result
 
 

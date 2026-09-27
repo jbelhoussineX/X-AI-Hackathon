@@ -132,7 +132,6 @@ class Run:
     source_urls: set[str] = field(default_factory=set)
     notes: list[str] = field(default_factory=list)
     limitations: list[str] = field(default_factory=list)
-
     data_source: str = field(default_factory=lambda: os.environ.get('POLITICAL_DATA_SOURCE', 'official'))
     prepared: dict | None = None
 
@@ -176,11 +175,10 @@ class Run:
             raise ResearchFailure('configuration')
         if self.data_source == 'official':
             import asyncio
-            from backend.data_sources.official import prepare, fetched_corpus
-            if self.prepared is None:
-                self.prepared = await asyncio.to_thread(prepare, self.topic, self.start, self.end)
-                self.limitations.extend(self.prepared['limitations'])
-                self.source_urls.update(fetched_corpus(self.prepared['corpus']))
+            from backend.data_sources.official import prepare, merge_prepared, fetched_corpus
+            prepared = await asyncio.to_thread(prepare, query or self.topic, self.start, self.end)
+            self.prepared = prepared if self.prepared is None else merge_prepared(self.prepared, prepared)
+            self.source_urls = set(fetched_corpus(self.prepared['corpus']))
             return self.corpus()
         prompt = (
             'Recherche des projets ou propositions de loi français liés au sujet. '
@@ -208,12 +206,12 @@ class Run:
         if self.data_source == 'official' and self.prepared is not None:
             return json.dumps({'corpus': self.prepared['corpus'],
                                'source_urls': sorted(self.source_urls),
-                               'limitations': self.limitations}, ensure_ascii=False)
+                               'limitations': [*self.prepared['limitations'], *self.limitations]}, ensure_ascii=False)
         return json.dumps({'notes': self.notes, 'source_urls': sorted(self.source_urls),
                            'limitations': self.limitations}, ensure_ascii=False)
 
     async def review(self) -> dict:
-        if self.data_source == 'official':
+        if self.data_source == 'official' and not self.source_urls:
             return {'needs_more': False, 'followup_query': None, 'limitations': []}
         prompt = (
             'Évalue uniquement les manques documentaires du corpus ci-dessous pour le sujet '
@@ -224,6 +222,14 @@ class Run:
             'Énumère brièvement les incertitudes dans limitations, sans raisonnement privé.\n'
             + self.corpus()
         )
+        if self.data_source == 'official':
+            prompt += (
+                '\nLe complément utilise les mêmes inventaires officiels et une recherche lexicale '
+                'dans les titres/thèmes : donne UN mot-clé français pertinent pour le sujet, '
+                'différent de la demande initiale, pas une phrase ou une instruction. '
+                'Demande un complément uniquement si ce mot peut trouver des textes utiles supplémentaires. '
+                'Aucune recherche web ni récupération d’email n’est disponible.'
+            )
         response = await self.call(prompt=prompt, schema=REVIEW_SCHEMA, max_tokens=700)
         try:
             from jsonschema import Draft202012Validator
@@ -241,11 +247,16 @@ class Run:
         return review
 
     async def finish(self) -> dict:
-        if not self.source_urls and self.data_source == 'official' and self.prepared is not None:
-            return {'schema_version': '1.0', 'topic': self.topic,
-                    'scope': 'Aucune page officielle exploitable.', 'documents': [], 'contacts': [],
-                    'limitations': [*self.limitations, 'Aucun rapport généré, aucune conclusion possible.']}
         if not self.source_urls:
+            if self.data_source == 'official' and self.prepared is not None:
+                return validate_report({
+                    'schema_version': '1.0', 'topic': self.topic,
+                    'scope': 'France ; inventaires Sénat et Assemblée nationale (15e à 17e législatures selon la période).',
+                    'documents': [], 'contacts': [],
+                    'limitations': [*self.prepared['limitations'],
+                                    'Aucun résultat trouvé dans le corpus consulté : aucune page exploitable, '
+                                    'aucun appel IA de rédaction effectué.'],
+                })
             raise ResearchFailure('sources')
         prompt = (
             'Construis le rapport JSON uniquement à partir du corpus. Ne complète pas de mémoire. '
@@ -297,18 +308,20 @@ class Run:
                 document['uncertainties'].append('Date de publication inconnue : période non confirmée.')
         report['topic'] = self.topic
         report['limitations'].extend(self.limitations)
-        if self.data_source == 'official':
+        if self.data_source == 'official' and self.prepared is not None:
             from backend.data_sources.official import fetched_corpus
             from backend.source_verification import verify_sources
-            if self.prepared is None:
-                raise ResearchFailure('sources')
+            report['limitations'].extend(self.prepared['limitations'])
             verified = verify_sources(report, fetched_sources=fetched_corpus(self.prepared['corpus']))
             if verified.checks and not verified.all_matched:
-                raise ResearchFailure('sources')
+                raise ResearchFailure('sources', reason='excerpt_not_found')
             report = verified.report
         else:
             report['limitations'].append(
-                'Recherche web : URLs issues des outils du fournisseur ; extraits non vérifiés indépendamment.')
+                'Corpus limité aux sources officielles de l’Assemblée nationale, du Sénat, de Légifrance '
+                'et de Vie publique. Les URLs figurent dans les sources de recherche du fournisseur ; '
+                'le code ne vérifie pas indépendamment la fidélité des extraits ni des résumés.'
+            )
         if not report['documents']:
             report['limitations'].append('Aucun résultat trouvé dans le corpus consulté pour cette recherche.')
         return validate_report(report)

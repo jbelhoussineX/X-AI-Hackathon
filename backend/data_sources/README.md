@@ -1,187 +1,105 @@
-# Collecte officielle : Sénat et Assemblée nationale
+# Collecte officielle intégrée à Pipelex
 
-La collecte est désormais appelée par défaut par les deux modes Pipelex
-(`POLITICAL_DATA_SOURCE=official`). Les sections Sénat ci-dessous décrivent
-les étapes précédentes et leurs tests, pas un branchement restant à faire.
+Code repris de la contribution `feat/pipelex-comparison`, commit `f5d79fc`,
+avec adaptation au parcours local existant. Aucun compte Pipelex hébergé requis.
 
-`official.py` réunit les deux institutions dans un corpus de 60 000 caractères.
-`assembly.py` lit l'archive JSON officielle de la 17e législature, sans extraction
-sur disque. Il conserve séparément dépôt, publication et mise en ligne.
-Les URL construites depuis les identifiants sont des candidates, jamais des preuves
-avant lecture réussie. Chaque version reste distincte. Trois notices par institution
-au maximum sont retenues par correspondance lexicale ; cela n'est pas une recherche exhaustive.
+## Utilisation
 
-Test réel du 27 septembre 2026 : sujet logement, 2025-01-01 à 2026-09-27,
-deux inventaires disponibles, six notices sélectionnées, dix pages dans le corpus,
-60 000 caractères. Deux textes sont tronqués et une page supplémentaire omise après
-atteinte de la limite. Sortie locale ignorée : `data/local/official-logement-integration-20260927.json`.
-Aucun appel IA ni validation juridique.
+Le mode réel de Streamlit utilise par défaut `POLITICAL_DATA_SOURCE=official`.
+Aucune clé n'est nécessaire pour les exports publics ; `OPENAI_API_KEY` reste
+nécessaire pour les deux appels de modèle (évaluation des manques et rédaction).
+Une collecte vide ne déclenche aucun appel de modèle. Aucun appel web OpenAI
+n'est fait dans ce mode, même en cas d'indisponibilité d'un inventaire.
 
-Sources : [Assemblée](https://data.assemblee-nationale.fr/travaux-parlementaires/dossiers-legislatifs),
-[Sénat](https://data.senat.fr/dosleg/).
-Légifrance/PISTE nécessite encore des identifiants d'application ; aucun accès n'est simulé.
+Commencer avec `logement`, `transport` ou `énergie`. La correspondance est lexicale,
+pas sémantique : tous les mots significatifs doivent figurer dans le titre ou les
+thèmes. Un LLM peut décider d'un complément avec un autre mot-clé, au plus une fois.
 
-## Historique et détails du collecteur Sénat
+Le collecteur peut aussi être utilisé sans IA, depuis l'environnement Python :
 
-# Ta partie : API et données officielles
-
-Tu fournis à l'agent des documents exploitables avec leur provenance. Ton livrable
-est un connecteur Python et un JSON documenté ; les autres membres peuvent travailler
-sur l'interface et les instructions Pipelex à partir de ce contrat.
-
-## Sources retenues et état
-
-| Source | Utilité | Accès | État dans ce dépôt |
-|---|---|---|---|
-| Sénat, DOSLEG | Repérer les dossiers par titre/thème, dépôt et état déclaré | Export CSV public, sans clé | Premier connecteur implémenté et testé sur les données réelles |
-| Assemblée nationale | Dossiers et documents parlementaires de l'Assemblée | Open data ; formats et lots à choisir | Pages accessibles par le collecteur existant ; connecteur aux exports à ajouter |
-| Légifrance | Compléter avec les textes publiés et leurs versions | API PISTE, inscription et OAuth | Pages accessibles par le collecteur existant ; client API à ajouter après configuration |
-
-Un export CSV accessible en HTTP est une source de données structurées ; ce n'est
-pas une API REST de recherche. Le programme télécharge ici l'export puis filtre
-localement. Il n'est pas nécessaire de créer un serveur FastAPI pour cela.
-
-Documentation officielle consultée le 27 septembre 2026 :
-
-- [Export DOSLEG du Sénat](https://data.senat.fr/dosleg/).
-- [Sens des champs de la liste des dossiers](https://data.senat.fr/aide/liste-des-dossiers-legislatifs/).
-- [Portail open data de l'Assemblée](https://data.assemblee-nationale.fr/).
-- [Accès à l'API Légifrance](https://www.legifrance.gouv.fr/contenu/pied-de-page/open-data-et-api).
-- [Authentification et environnements PISTE](https://www.legifrance.gouv.fr/contenu/pied-de-page/foire-aux-questions-api).
-
-## Premier connecteur disponible
-
-Fichiers : `backend/data_sources/senate.py` (index des dossiers) et
-`senate_documents.py` (dossiers et textes liés). Aucun appel IA ni secret nécessaire.
-
-Depuis la racine du dépôt :
-
-```powershell
-.\.venv\Scripts\python.exe -m backend.data_sources.senate --topic "logement" --start 2024-01-01 --end 2026-09-27 --fetch-pages --output data/local/senat-logement-nouvel-essai.json
+```bash
+python -m backend.data_sources.official --topic logement --start 2017-06-21 --end 2026-09-27 --output data/local/collecte-logement.json
 ```
 
-Choisir un nom de sortie inexistant. Sans `--fetch-pages`, seule la liste des
-dossiers est préparée : aucun téléchargement des pages et aucune entrée Pipelex.
-Le JSON et les sources téléchargées restent sous `data/local/`, ignoré par Git.
+Cette commande télécharge des données publiques. Utiliser un nom de sortie neuf.
+`data/local/` est ignoré par Git. Il ne s'agit pas d'une base SQLite synchronisée :
+les exports sont téléchargés à la demande et le corpus est construit en mémoire.
 
-Fonction utilisable depuis Python :
+## Catalogue depuis le début de la 15e législature
 
-```python
-from backend.data_sources.senate import prepare
+Pour conserver toutes les notices reconnues dans les inventaires, sans mot-clé,
+sans limite de résultats et sans appel IA :
 
-prepared = prepare('logement', '2024-01-01', '2026-09-27', fetch_pages=True)
-records = prepared['records']
-inputs = prepared['pipelex_inputs']  # None si aucun corpus n'a pu être préparé
+```bash
+conda activate xia-hackathon
+python -m backend.data_sources.catalogue --output data/local/catalogue-depuis-15e.json
 ```
 
-## Contrat de données
+La 15e législature est incluse dans son ensemble. La période par défaut va du **21 juin 2017 à aujourd'hui**. Les options
+`--start` et `--end` permettent de la fixer. Utiliser un nouveau nom de fichier
+à chaque actualisation. Le fichier conserve les dates, liens, identifiants,
+provenances et empreintes des exports ; il reste local et n'est pas poussé sur Git.
+Il ne contient pas tous les textes intégraux et n'est pas utilisé comme cache par
+Streamlit : chaque recherche consulte à nouveau les exports officiels.
 
-Le résultat contient :
+Le catalogue retient une notice si son dépôt, sa publication ou sa promulgation
+connue est dans la période ; `period_matched_on` précise la ou les dates retenues.
+Un dossier déposé avant 2020 mais promulgué en 2020 peut ainsi être inclus côté
+Sénat. Les notices sans date sont comptées et exclues. Les versions et les deux
+chambres sont conservées séparément : **une notice n'est pas une loi distincte**.
 
-- `dataset` : URL de l'export, date réelle de récupération, SHA-256 du fichier,
-  date HTTP Last-Modified si présente. Cette date HTTP n'est pas une date de texte juridique.
-- `records` : au plus six dossiers, du dépôt le plus récent au plus ancien.
-  Chaque dossier garde `id`, `title`, `kind`, `original_kind`, `initial_date`,
-  `dossier_url`, `original_url`, `reported_state`, `promulgation_date`,
-  `law_number` et `themes`.
-- `limitations` : couverture, sens du filtre et problèmes de collecte.
-- `linked_documents` : liens vers les textes trouvés dans les dossiers et statut
-  de leur collecte (`included`, `not_attempted` ou cause d'échec).
-- `pipelex_inputs` : enveloppe `request` attendue par `political_report.build_report`,
-  uniquement si des pages ont été récupérées. Le `corpus_json` contient le texte
-  effectivement lu, les URLs, l'horodatage et les indicateurs de troncature.
-  Chaque source comporte aussi son rôle (`dossier` ou `legislative_text`), les
-  dossiers qui la référencent et l'empreinte SHA-256 du contenu transmis.
+Une archive indisponible produit un catalogue `partial` et un code de sortie 1,
+avec les autres sources disponibles conservées. `ok` signifie que les exports
+configurés ont été téléchargés et reconnus, pas que toutes les lois françaises
+sont représentées. Aucun accès Légifrance ni certification de droit en vigueur.
+Il n'y a pas de synchronisation quotidienne.
 
-Les métadonnées CSV servent au repérage. Elles ne sont pas transformées en
-citations de dispositions légales. Les dates absentes restent nulles. La date
-initiale correspond au dépôt initial du dossier selon les règles du Sénat ; elle
-n'est pas renommée `publication_date`. Un état « promulgué » ne prouve pas qu'une
-disposition soit encore en vigueur aujourd'hui.
+## Sources et limites
 
-La recherche est lexicale : tous les mots significatifs doivent être présents
-dans le titre ou les thèmes. Les accents et majuscules sont normalisés. Il n'y a
-pas de synonymes, de rapprochement singulier/pluriel ou de classement politique.
-Commencer avec un mot simple comme `logement`, `transport` ou `énergie` ; une forme
-différente peut donner d'autres résultats. Les dates inconnues sont exclues du
-filtre de dépôt. Les résolutions et motions sont hors périmètre de cette version.
+- Assemblée : archives JSON publiques des **15e, 16e et 17e législatures**.
+  La recherche choisit les archives selon la période, avec recouvrement des
+  années de transition 2022 et 2024 ; le catalogue les lit toutes.
+  Limites de taille réseau et de décompression, sans extraction ZIP sur disque.
+  Les indisponibilités sont signalées par législature sans supprimer les autres.
+- Sénat : export CSV DOSLEG et lecture de pages HTML/PDF liées aux dossiers.
+- Trois notices par institution et par collecte. La présélection filtre le
+  **dépôt initial**, distinct de la publication filtrée lors de la validation du
+  rapport. Cela peut exclure des textes dont la publication serait dans la période.
+- Le corpus initial et le complément réunis sont limités à 60 000 caractères.
+  Les pages tronquées et indisponibles sont signalées ; pas d'OCR ni de JavaScript.
+- Les citations sont recherchées dans le texte effectivement transmis, en
+  normalisant uniquement espaces et composition Unicode. Cela ne valide pas
+  leur interprétation, la date ou l'actualité juridique.
+- Légifrance/PISTE n'est pas connecté. Aucune clé Assemblée/Sénat n'est attendue.
 
-## Raccordement à l'agent : ce qui est prêt et ce qui reste
+Sources officielles des exports :
+[15e législature](https://data.assemblee-nationale.fr/archives-anterieures/archives-15e/dossiers-legislatifs),
+[16e législature](https://data.assemblee-nationale.fr/archives-16e/dossiers-legislatifs),
+[17e législature](https://data.assemblee-nationale.fr/travaux-parlementaires/dossiers-legislatifs),
+[DOSLEG](https://data.senat.fr/dosleg/).
 
-Le connecteur peut préparer une entrée pour la méthode Pipelex déjà validée.
-Il n'a pas remplacé automatiquement PipeSearch dans l'interface : ce choix et la
-fusion avec les nouvelles contributions de `main` restent à traiter à l'intégration.
-Le formulaire actuel continue son parcours PipeSearch habituel.
-
-Pour intégrer cette source, le contrôleur devra utiliser `pipelex_inputs` avec le
-client `backend.pipelex_report.build_report`, puis valider le JSON brut et ses
-citations contre le corpus exact, comme dans `backend.pipelex_research`. Ne pas
-afficher directement la sortie du modèle. Conserver aussi les limites du collecteur.
-
-Le collecteur suit désormais les liens explicites vers les textes HTML/PDF du
-Sénat, sans inventer d'URL à partir du nom du dossier. Il parcourt au plus trois
-dossiers et deux textes par dossier, dans l'ordre des liens. Les différentes URL
-de versions restent distinctes ; HTML est préféré au PDF si les deux liens ont
-le même nom de document. Un lien de l'Assemblée nationale n'est pas suivi ici.
-
-L'extraction privilégie la balise HTML `main` lorsqu'elle existe ; sans cette
-balise, l'extraction générale reste utilisée. Les espaces et la composition
-Unicode du HTML sont normalisés avant de limiter la taille. Les pages PDF restent
-séparées, sans OCR. Une absence de lien reconnu est signalée, sans prétendre que
-le texte n'existe pas.
-
-Limites : 45 secondes de budget vérifié entre lectures (une lecture en cours peut
-le dépasser jusqu'à son timeout), 60 000 caractères de corpus, 4 000 par dossier
-et 12 000 par texte. Les limites de taille réseau et de redirections du collecteur
-commun restent actives. Toute troncature est signalée ; les champs de statut du
-CSV ne deviennent pas des citations. Ce suivi reste un parcours limité et ne
-reconstitue pas toute la navette parlementaire.
-
-## Suite de ton travail, dans l'ordre
-
-1. Choisir deux ou trois thèmes pour la démonstration et vérifier les dossiers retrouvés.
-2. Contrôler les textes désormais collectés et étendre les formats de liens si
-   des documents utiles ne sont pas reconnus. Relire les dispositions et leurs versions.
-3. Relire les textes de l’Assemblée désormais collectés par le nouvel adaptateur.
-4. Pour Légifrance, configurer une application PISTE : API souscrite, CGU validées,
-   identifiants OAuth côté serveur. Sandbox et production utilisent des accès distincts.
-   Ne jamais envoyer le client secret dans Git ou dans une conversation.
-5. Avec le responsable de l'agent, vérifier un résultat
-   complet : sujet → documents → résumé → citations.
-
-La détection périodique des nouveaux textes peut ensuite utiliser les
-[flux officiels du Sénat](https://www.senat.fr/flux-rss.html), distinctement de cette
-recherche dans les dossiers. Aucun ordonnanceur n'est ajouté ici.
+L'ancien mode web reste disponible via `POLITICAL_DATA_SOURCE=web` ; il utilise
+3 à 4 appels de modèle et l'outil web payant. Aucun basculement automatique.
 
 ## Vérifications
 
-Tests locaux :
+Les tests importés de l'équipe couvrent les archives, CSV, dates, limites et liens.
+Les tests d'intégration utilisent le moteur Pipelex réel et les deux transports
+HTTP simulés (`httpx` pour les données, `httpx2` pour le SDK OpenAI). Ils couvrent
+le complément décidé par le modèle, les corpus vides et le refus des citations
+absentes. Au 27 septembre 2026 : 162 tests hors ligne réussis.
 
-```powershell
-.\.venv\Scripts\python.exe -m unittest discover -s tests
-.\.venv\Scripts\python.exe -m mypy backend/data_sources
-```
+Vérification publique effectuée le 27 septembre 2026, sans appel IA : les trois
+ZIP Assemblée et le CSV Sénat ont été téléchargés et analysés. Le catalogue local
+`data/local/catalogue-depuis-15e-2026-09-27.json` contient 9 384 notices depuis le
+21 juin 2017 : 6 587 Assemblée et 2 797 Sénat, dont 637 dossiers Sénat avec une date de
+promulgation dans la période. La date retenue la plus récente est le 23 septembre
+2026. Les 2 927 notices de la 15e reconnues dans l’archive sont toutes conservées.
+Ce sont des notices, pas 9 384 lois distinctes. Le nombre évoluera lors des
+prochaines actualisations. La génération IA sur ces archives n'a pas été testée.
 
-Premier contrôle réel du 27 septembre 2026 : export de 3 627 200 octets,
-12 443 lignes, 11 171 dossiers de projets/propositions reconnus. Pour `logement`
-du 2024-01-01 au 2026-09-27 : six dossiers retenus et quatre pages récupérées,
-toutes tronquées, pour 60 000 caractères au total. Les deux pages restantes
-n'ont pas été lues après atteinte du budget. Le résultat local est
-`data/local/senat-logement-20260927.json`. Ces chiffres décrivent cet essai,
-pas une garantie de couverture. Aucun résumé IA ni fait juridique n'a été validé.
-
-Second contrôle réel : `data/local/senat-logement-corpus-20260927.json`, après ajout
-du parcours des liens et extraction du contenu principal. Six dossiers sélectionnés,
-trois parcourus, cinq sources transmises (trois dossiers et deux textes législatifs),
-20 825 caractères sans troncature du contenu extrait. Un dossier n'avait pas de
-lien de texte reconnu ; trois dossiers n'ont pas été parcourus par limite explicite.
-Aucun appel IA. Cela ne valide ni la fidélité d'un résumé ni la vigueur des mesures.
-
-119 tests passent avec les dépendances de l'interface installées. Les tests
-automatiques utilisent des CSV et réponses HTTP fictifs. Ils vérifient
-l'encodage, les dates, les URL, les doublons, les limites, les erreurs et la
-préparation sans appel IA. Les droits de réutilisation des données restent ceux
-du producteur ; la licence MIT du code ne remplace pas leur licence.
+Le mode hébergé est également conservé : un appel de rapport via l’API Pipelex,
+avec PIPELEX_API_KEY et ENABLE_PIPELEX_CALLS=true, sans complément IA local.
 
 ## Événements récents
 
@@ -219,3 +137,11 @@ Validation : 262 tests et 28 sous-tests passent ; mypy valide les deux collecteu
 
 Références : https://www.senat.fr/flux-rss.html et
 https://data.assemblee-nationale.fr/foire-aux-questions .
+
+## Validation de la fusion Windows
+
+Après intégration de main (679bcfc), 280 tests et 28 sous-tests passent hors ligne.
+Les tests du graphe local autorisent uniquement les sockets de boucle locale
+nécessaires à asyncio sous Windows ; les appels fournisseurs restent simulés.
+Les dépendances et les empreintes des types générés sont cohérentes.
+Aucun essai de génération réelle n’a été lancé pendant cette fusion.

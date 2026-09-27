@@ -1,13 +1,13 @@
 > Mise à jour du 27 septembre : ce document décrit le parcours local OpenAI
 > ajouté par l'équipe. Pour l'activer, définir `PIPELEX_EXECUTION_MODE=local`
 > et `ENABLE_PIPELEX_CALLS=true`. Le nouveau défaut de collecte est `official`
-> (Sénat/Assemblée, puis un appel de synthèse si le corpus est non vide).
+> (Sénat/Assemblée, puis deux appels OpenAI si le corpus est non vide).
 > Les indications « 3 à 4 appels » concernent uniquement `POLITICAL_DATA_SOURCE=web`.
 > Les variables sont fournies au processus ; aucun chargement automatique de .env.
 > Voir le [README actuel](../README.md). Les anciens résultats de tests ci-dessous
 > sont des constats historiques de l'auteur, pas la validation de cette fusion.
 
-# Installer Pipelex pour Repères citoyens
+# Installer Pipelex pour Sed Lex
 
 Ce guide prépare Pipelex sur le Mac de Maison, dans l'environnement Conda
 `xia-hackathon`, avec la clé API OpenAI de l'équipe. Le moteur Pipelex tourne

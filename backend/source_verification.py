@@ -13,7 +13,7 @@ import unicodedata
 from urllib.parse import urljoin, urlsplit
 
 import httpx
-from backend.report_contract import validate_report
+from src.contracts import validate_report
 
 HOSTS = frozenset({'assemblee-nationale.fr', 'www.assemblee-nationale.fr',
                    'senat.fr', 'www.senat.fr', 'legifrance.gouv.fr', 'www.legifrance.gouv.fr'})
@@ -171,7 +171,7 @@ def verify_sources(report, *, transport=None, fetched_sources=None):
     cache: dict[str, FetchedSource] = dict(fetched_sources or {})
     deadline = monotonic() + 30
     with httpx.Client(transport=transport, follow_redirects=False, trust_env=False,
-                      headers={'User-Agent': 'ReperesCitoyens-Hackathon/0.1'}) as client:
+                      headers={'User-Agent': 'SedLex-Hackathon/0.1'}) as client:
         for kind, entities in [('document', result['documents']), ('contact', result['contacts'])]:
             for index, entity in enumerate(entities):
                 for evidence_index, evidence in enumerate(entity['evidence'], 1):

@@ -102,7 +102,7 @@ def fetch_dataset(*, transport=None) -> tuple[bytes, dict]:
     """One bounded public download, no API key, retry or automatic redirect."""
     deadline = monotonic() + 25
     with httpx.Client(transport=transport, timeout=10, follow_redirects=False, trust_env=False,
-                      headers={'User-Agent': 'ReperesCitoyens-Hackathon/0.1'}) as client:
+                      headers={'User-Agent': 'SedLex-Hackathon/0.1'}) as client:
         with client.stream('GET', DATASET_URL) as response:
             if response.status_code != 200:
                 raise ValueError(f'Export DOSLEG indisponible (HTTP {response.status_code}).')

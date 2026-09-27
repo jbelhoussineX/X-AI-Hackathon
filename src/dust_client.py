@@ -111,7 +111,7 @@ def run_dust(message: str, settings: Settings | None = None) -> tuple[dict, str 
             # Contexte requis par le SDK Dust : identité générique de l'application.
             # https://github.com/dust-tt/dust/blob/main/sdks/js/src/types.ts
             'context': {
-                'username': 'reperes-citoyens', 'timezone': 'Europe/Paris', 'origin': 'api',
+                'username': 'sed-lex', 'timezone': 'Europe/Paris', 'origin': 'api',
             },
         },
         'title': 'Recherche citoyenne — prototype',

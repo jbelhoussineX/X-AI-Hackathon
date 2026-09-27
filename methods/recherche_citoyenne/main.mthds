@@ -15,7 +15,7 @@ steps = [
 
 [pipe.collecter]
 type = "PipeFunc"
-description = "Consulter les sources officielles avec l'outil web OpenAI."
+description = "Collecter les inventaires et pages officiels, ou utiliser le mode web si configuré."
 function_name = "collect_sources"
 output = "Text"
 

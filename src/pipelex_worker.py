@@ -41,7 +41,7 @@ async def execute(request: dict) -> dict:
             mthds_contents=[(root / 'methods/recherche_citoyenne/main.mthds').read_text(encoding='utf-8')],
         )
         report = json.loads(result.pipe_output.main_stuff.content.text)
-        if run.calls not in ((0, 1) if run.data_source == 'official' else (3, 4)):
+        if run.calls not in ((0, 2) if run.data_source == 'official' else (3, 4)):
             raise ResearchFailure('configuration')
         return report
     finally:

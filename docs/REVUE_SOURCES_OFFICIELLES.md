@@ -1,5 +1,10 @@
 # Revue du connecteur de l'équipe — 27 septembre 2026
 
+**Mise à jour :** les collecteurs ont été intégrés sélectivement à `main`, en
+conservant Pipelex local, les correctifs et la décision LLM de complément.
+Voir [la documentation active](../backend/data_sources/README.md). Le texte
+ci-dessous conserve la revue de la branche avant intégration.
+
 Après `git fetch origin`, le travail se trouve sur `origin/feat/pipelex-comparison`,
 commit `f5d79fc` (« integrate official data with team Pipelex and Streamlit workflow »),
 après `fcbd7a3` (« prepare official Senate and Assembly data for Pipelex »).

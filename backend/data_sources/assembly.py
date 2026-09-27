@@ -13,6 +13,15 @@ import httpx
 from backend.data_sources.senate import _terms
 
 DATASET_URL = 'https://data.assemblee-nationale.fr/static/openData/repository/17/loi/dossiers_legislatifs/Dossiers_Legislatifs.json.zip'
+DATASET_URLS = {
+    15: 'https://data.assemblee-nationale.fr/static/openData/repository/15/loi/dossiers_legislatifs/Dossiers_Legislatifs_XV.json.zip',
+    16: 'https://data.assemblee-nationale.fr/static/openData/repository/16/loi/dossiers_legislatifs/Dossiers_Legislatifs.json.zip',
+    17: DATASET_URL,
+}
+# Archive selection is deliberately broad at transitions, then filtered by notice dates.
+LEGISLATURE_PERIODS = {15: ('2017-01-01', '2022-12-31'),
+                       16: ('2022-01-01', '2024-12-31'),
+                       17: ('2024-01-01', '9999-12-31')}
 MAX_BYTES = 25_000_000
 MAX_UNPACKED = 150_000_000
 MAX_MEMBER = 5_000_000
@@ -40,7 +49,9 @@ def _iso(value):
     return parsed.date().isoformat()
 
 
-def parse_archive(payload: bytes) -> list[AssemblyDocument]:
+def parse_archive(payload: bytes, legislature: int = 17) -> list[AssemblyDocument]:
+    if legislature not in DATASET_URLS:
+        raise ValueError('Législature AN non prise en charge.')
     if len(payload) > MAX_BYTES:
         raise ValueError('Archive AN trop volumineuse.')
     records: dict[str, AssemblyDocument] = {}
@@ -64,10 +75,10 @@ def parse_archive(payload: bytes) -> list[AssemblyDocument]:
             label = document.get('denominationStructurelle', '').casefold()
             kind = ('proposition_de_loi' if label.startswith('proposition de loi') else
                     'projet_de_loi' if label.startswith('projet de loi') else None)
-            if kind is None or str(document.get('legislature')) != '17':
+            if kind is None or str(document.get('legislature')) != str(legislature):
                 continue
             uid = document.get('uid', '')
-            if not re.fullmatch(r'(?:PION|PRJL)ANR[0-9]+L17B[0-9]+', uid):
+            if not re.fullmatch(rf'(?:PION|PRJL)ANR[0-9]+L{legislature}B[0-9]+', uid):
                 continue
             title = document.get('titres', {}).get('titrePrincipal')
             if not isinstance(title, str) or not title.strip():
@@ -82,7 +93,7 @@ def parse_archive(payload: bytes) -> list[AssemblyDocument]:
                                       _iso(chrono.get('dateDepot')), _iso(chrono.get('datePublication')),
                                       _iso(chrono.get('datePublicationWeb')),
                                       f'https://www.assemblee-nationale.fr/dyn/opendata/{uid}.html',
-                                      f'https://www.assemblee-nationale.fr/dyn/17/dossiers/{dossier}' if dossier else None,
+                                      f'https://www.assemblee-nationale.fr/dyn/{legislature}/dossiers/{dossier}' if dossier else None,
                                       dossier)
             if uid in records and records[uid] != record:
                 raise ValueError('Notices AN contradictoires pour un même identifiant.')
@@ -92,10 +103,13 @@ def parse_archive(payload: bytes) -> list[AssemblyDocument]:
     return list(records.values())
 
 
-def fetch_dataset(*, transport=None) -> tuple[bytes, dict]:
+def fetch_dataset(*, legislature: int = 17, transport=None) -> tuple[bytes, dict]:
+    if legislature not in DATASET_URLS:
+        raise ValueError('Législature AN non prise en charge.')
+    url = DATASET_URLS[legislature]
     deadline = monotonic() + 30
     with httpx.Client(transport=transport, timeout=10, trust_env=False, follow_redirects=False) as client:
-        with client.stream('GET', DATASET_URL) as response:
+        with client.stream('GET', url) as response:
             if response.status_code != 200:
                 raise ValueError(f'Archive AN indisponible (HTTP {response.status_code}).')
             body = bytearray()
@@ -103,7 +117,7 @@ def fetch_dataset(*, transport=None) -> tuple[bytes, dict]:
                 body.extend(chunk)
                 if len(body) > MAX_BYTES or monotonic() > deadline:
                     raise ValueError('Limite de téléchargement AN atteinte.')
-            return bytes(body), {'source_url': DATASET_URL, 'origin': 'official-download',
+            return bytes(body), {'source_url': url, 'legislature': legislature, 'origin': 'official-download',
                                  'retrieved_at': datetime.now(timezone.utc).isoformat(),
                                  'http_last_modified': response.headers.get('last-modified'),
                                  'sha256': hashlib.sha256(body).hexdigest()}
@@ -120,8 +134,34 @@ def select(records, topic, start, end, limit=3):
     return sorted(matches, key=lambda r: (r.initial_date, r.id), reverse=True)[:limit]
 
 
+def legislatures_for_period(start: str, end: str) -> list[int]:
+    if date.fromisoformat(start) > date.fromisoformat(end):
+        raise ValueError('Période AN invalide.')
+    return [n for n, (first, last) in LEGISLATURE_PERIODS.items()
+            if start <= last and end >= first]
+
+
+def load_inventories(legislatures, *, transport=None):
+    """Keep successful archives if another fails, with explicit per-archive provenance."""
+    records, datasets = [], []
+    for legislature in legislatures:
+        if legislature not in DATASET_URLS:
+            raise ValueError('Législature AN non prise en charge.')
+        try:
+            payload, provenance = fetch_dataset(legislature=legislature, transport=transport)
+            parsed = parse_archive(payload, legislature)
+            records.extend(parsed)
+            datasets.append(dict(provenance, provider='assemblee', status='ok',
+                                 parsed_law_documents=len(parsed)))
+        except (httpx.HTTPError, ValueError, UnicodeError, zipfile.BadZipFile, RuntimeError) as exc:
+            datasets.append({'provider': 'assemblee', 'legislature': legislature,
+                             'source_url': DATASET_URLS[legislature], 'status': 'unavailable',
+                             'error_type': type(exc).__name__})
+    return records, datasets
+
+
 def inventory(topic, start, end, *, transport=None):
-    payload, provenance = fetch_dataset(transport=transport)
-    records = parse_archive(payload)
-    return {'dataset': provenance, 'parsed_law_documents': len(records),
+    select([], topic, start, end)  # Validate before any download.
+    records, datasets = load_inventories(legislatures_for_period(start, end), transport=transport)
+    return {'datasets': datasets, 'parsed_law_documents': len(records),
             'records': [asdict(r) for r in select(records, topic, start, end)]}

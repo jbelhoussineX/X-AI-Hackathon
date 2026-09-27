@@ -48,22 +48,24 @@ def test_hosted_skips_search_and_empty_corpus_skips_generation(empty):
 
 
 @pytest.mark.parametrize('empty', [False, True])
-def test_local_real_graph_uses_only_final_inference(empty):
+def test_local_real_graph_reviews_then_writes_without_web(empty):
     from src.pipelex_worker import execute
     captured = []
     async def fake(self, **kwargs):
         captured.append(kwargs)
         self.calls += 1
-        return SimpleNamespace(output_text=json.dumps(report()))
+        payload = {'needs_more': False, 'followup_query': None, 'limitations': []} if len(captured) == 1 else report()
+        return SimpleNamespace(output_text=json.dumps(payload))
     with patch('backend.data_sources.official.prepare', return_value=prepared(empty)), \
          patch.object(Run, 'call', fake):
         output = asyncio.run(execute({'topic': 'Transports', 'start': '2026-01-01', 'end': '2026-12-31'}))
-    assert len(captured) == (0 if empty else 1)
+    assert len(captured) == (0 if empty else 2)
     if empty:
         assert output['documents'] == []
     else:
         assert TEXT in captured[0]['prompt']
-        assert not captured[0].get('search', False)
+        assert all(not call.get('search', False) for call in captured)
+        assert TEXT in captured[1]['prompt']
 
 
 def test_local_refuses_invented_excerpt_in_known_url():

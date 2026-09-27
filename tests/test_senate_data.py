@@ -94,7 +94,7 @@ class SenateDataTests(unittest.TestCase):
             if str(request.url) == DATASET_URL:
                 return httpx.Response(200, content=csv_bytes(), headers={'content-type': 'text/csv'})
             return httpx.Response(200, text='<p>Texte fictif pour les tests.</p>', headers={'content-type': 'text/html'})
-        with patch('backend.clients.pipelex_client', side_effect=AssertionError('No inference')):
+        with patch('src.openai_research._make_client', side_effect=AssertionError('No inference')):
             result = prepare('logement', '2026-01-01', '2026-12-31', fetch_pages=True,
                              transport=httpx.MockTransport(handler))
         self.assertEqual(len(calls), 2)
