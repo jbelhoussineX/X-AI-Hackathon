@@ -44,7 +44,8 @@ il conserve les résumés Dust en indiquant explicitement que Pipelex est désac
 Un corpus vide n'entraîne aucun appel Pipelex. Une erreur n'est pas remplacée par
 une fausse réussite ni une réponse fictive. Le mode Démonstration existant n'appelle rien.
 
-**Aucun essai réel autorisé ou effectué.** Les clés et activations restent dans
+Un premier essai réel explicitement autorisé a réussi sur données fictives
+(voir `TEST_RESULT.md`). Le parcours Dust réel reste à vérifier. Les clés et activations restent dans
 l'environnement du serveur, jamais dans le frontend. Ne pas activer les appels
 pour vérifier ce développement : les tests utilisent des analyseurs factices.
 

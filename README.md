@@ -83,9 +83,15 @@ X-AI-Hackathon/
 .\.venv\Scripts\python.exe -m mypy backend/pipelex_comparison.py backend/clients.py backend/generated backend/dust/client.py src/service.py
 ```
 
-62 tests avec les dépendances UI installées, dont interactions de démonstration
+75 tests avec les dépendances UI installées, dont interactions de démonstration
 Streamlit et clients simulés. Aucun de ces tests n'exécute Dust ou Pipelex.
 Les fichiers générés ne doivent pas être modifiés à la main.
+
+Le [contrôle des sources](backend/SOURCES.md) recherche les extraits Dust dans
+les pages officielles avant la synthèse. Les sources non confirmées sont signalées
+et empêchent l'appel Pipelex. Les tests HTTP sont simulés, sans recherche réelle.
+Un [premier essai Pipelex](methods/political_summary/TEST_RESULT.md) a réussi sur
+un rapport fictif ; le parcours avec un rapport Dust réel reste à vérifier.
 
 ## Licence
 

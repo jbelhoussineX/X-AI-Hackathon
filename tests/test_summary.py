@@ -12,6 +12,7 @@ from backend.generated.political_summary.models import SummaryRequest
 from frontend.interface_b import verifier_sortie
 from backend.dust.client import DustResult
 from src.service import search
+from backend.source_verification import SourceVerification
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -89,6 +90,7 @@ class SummaryTests(unittest.TestCase):
     def test_frontend_service_calls_synthesis_only_when_enabled_with_fake_clients(self):
         with patch.dict(os.environ, {'ENABLE_PIPELEX_CALLS': 'true'}), \
              patch('src.service.research', return_value=DustResult(self.report, 'fake')), \
+             patch('src.service.verify_sources', return_value=SourceVerification(self.report, [{'status': 'matched'}])), \
              patch('src.service.analyze_summary', return_value=self.output) as analyzer:
             result = search('Logement étudiant', '2026-01-01', '2026-12-31')
         self.assertEqual(analyzer.call_count, 1)

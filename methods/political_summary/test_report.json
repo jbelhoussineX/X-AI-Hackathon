@@ -1,0 +1,43 @@
+{
+  "schema_version": "1.0",
+  "topic": "Logement étudiant",
+  "scope": "TEST FICTIF : un projet de loi inventé, aucune recherche réelle.",
+  "documents": [
+    {
+      "id": "fictif-logement-1",
+      "title": "Projet fictif d'aide au logement étudiant",
+      "kind": "projet_de_loi",
+      "publication_date": "2026-09-01",
+      "summary": "Résumé généré à ne pas traiter comme preuve.",
+      "stage": "Déposé ; adoption non confirmée",
+      "stage_date": "2026-09-01",
+      "evidence": [
+        {
+          "purpose": "contenu",
+          "url": "https://example.org/fictif/logement",
+          "excerpt": "Le projet propose une aide mensuelle de 100 euros aux étudiants boursiers locataires, sous réserve de ressources inférieures à 12 000 euros par an.",
+          "location": "Article 1 fictif"
+        },
+        {
+          "purpose": "contenu",
+          "url": "https://example.org/fictif/logement",
+          "excerpt": "Les étudiants propriétaires ne sont pas éligibles. Le dispositif ne prendrait effet qu'après adoption et publication des textes d'application.",
+          "location": "Article 2 fictif"
+        },
+        {
+          "purpose": "statut",
+          "url": "https://example.org/fictif/dossier",
+          "excerpt": "Ce projet a été déposé le 1er septembre 2026. Son adoption n'est pas confirmée dans ce dossier fictif.",
+          "location": "Dossier fictif"
+        }
+      ],
+      "uncertainties": [
+        "Adoption et entrée en vigueur non confirmées."
+      ]
+    }
+  ],
+  "contacts": [],
+  "limitations": [
+    "Cas entièrement fictif, aucune page consultée."
+  ]
+}
