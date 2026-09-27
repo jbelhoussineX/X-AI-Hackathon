@@ -1,0 +1,49 @@
+{
+  "schema_version": "1.0",
+  "topic": "Exemple fictif de contrôle de l’interface",
+  "scope": "Données entièrement fictives : ne décrivent aucune mesure ni personne réelle.",
+  "documents": [
+    {
+      "id": "DEMO-1",
+      "title": "EXEMPLE FICTIF — une fiche documentaire",
+      "kind": "proposition_de_loi",
+      "publication_date": "2026-09-01",
+      "summary": "Texte inventé uniquement pour vérifier l’affichage. Ce résultat ne provient pas d’une recherche.",
+      "stage": null,
+      "stage_date": null,
+      "evidence": [
+        {
+          "purpose": "contenu",
+          "url": "https://example.org/document-fictif",
+          "excerpt": "Extrait entièrement fictif, sans valeur documentaire.",
+          "location": "Démonstration du format"
+        }
+      ],
+      "uncertainties": [
+        "Le statut est volontairement absent pour tester cet affichage."
+      ]
+    }
+  ],
+  "contacts": [
+    {
+      "name": "Organisme fictif",
+      "role": "Rôle de démonstration",
+      "relation": "Relation inventée pour tester la présentation.",
+      "document_ids": [
+        "DEMO-1"
+      ],
+      "contact_url": null,
+      "evidence": [
+        {
+          "purpose": "relation",
+          "url": "https://example.org/document-fictif",
+          "excerpt": "Relation fictive, ne désigne aucun organisme réel.",
+          "location": null
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "EXEMPLE FICTIF : aucune source réelle n’a été consultée. Les liens example.org sont des valeurs de test."
+  ]
+}

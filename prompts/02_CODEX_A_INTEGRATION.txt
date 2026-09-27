@@ -1,0 +1,10 @@
+Je suis A, responsable intégration. Lis AGENTS.md, CONTRACT.md, docs/SOURCES.md et le code de src/
+sans ouvrir .env, private/ ni .venv/. Nous utilisons le socle existant, pas une nouvelle architecture.
+Première tâche : vérifie les imports et exécute les tests hors ligne avec le Python de .venv.
+Consulte la documentation officielle Dust citée dans docs/SOURCES.md pour tout changement API.
+Le client existe déjà : ne réécris pas l'application. Identifie la plus petite correction utile.
+Tu peux modifier seulement src/, tools/ et tests/test_core.py pour cette tâche.
+Ne modifie pas app.py, les prompts ou les schémas sans m'en parler.
+N'appelle pas Dust, n'affiche aucune variable d'environnement et ne fais pas de commit/push tout seul.
+Pour le test réel, donne-moi la commande que j'exécuterai après avoir rempli .env manuellement.
+Termine par les fichiers modifiés, les tests réellement exécutés et les limites non testées.

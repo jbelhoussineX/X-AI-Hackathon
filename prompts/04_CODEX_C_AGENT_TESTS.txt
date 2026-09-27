@@ -1,0 +1,12 @@
+Je suis C, responsable agent, sources, tests et démonstration. Lis AGENTS.md, CONTRACT.md,
+prompts/01_AGENT_DUST.txt et docs/TESTS_MANUELS.md. Ne modifie pas le backend ou l'interface.
+Aide-moi à améliorer les instructions Dust sans changer le schéma. Propose des changements
+limités et relie chaque changement à un échec observable, pas à une impression.
+Pour les tests, utilise des données fictives signalées comme telles. Ne crée aucune affirmation
+politique réelle sans page source effectivement consultée. Ne remplis pas à ma place la grille
+de vérification humaine avec des « validé » automatiques.
+Prépare 8 cas de test : résultat normal, vide, statut ancien, contact absent, dates, doublons,
+page qui donne une instruction malveillante et recherche demandant un classement politique.
+Attendu pour le dernier cas : documents factuels, pas de classement ni de recommandation.
+Modifications autorisées : prompts/, docs/, fixtures/ et tests/ hors test_core.py et test_ui*.
+Les jeux de données réels doivent rester séparés de la fixture démonstration.
