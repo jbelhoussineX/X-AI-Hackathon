@@ -1,5 +1,13 @@
 # Raccordement de la page de l'équipe
 
+## Priorité actuelle : informer selon le sujet choisi
+
+Le parcours principal est maintenant Dust → synthèse Pipelex → interface.
+Voir `methods/political_summary/README.md` : `src.service.search` utilise cette
+synthèse si les appels Pipelex sont explicitement activés. Aucun appel réel n'a été
+effectué. Les étapes de collecte/comparaison et la persistance décrites plus bas
+restent des extensions de suivi dans le temps, pas un préalable à cette synthèse.
+
 La page Streamlit de l'équipe, `frontend/interface_b.py`, a été récupérée depuis
 `origin/main` (commit `210d188`). Ce dépôt n'ajoute pas de deuxième interface.
 Son point d'entrée `src.service.search(topic, start, end, mode='dust')` est fourni :

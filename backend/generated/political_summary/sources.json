@@ -1,0 +1,21 @@
+{
+  "comment": "Written by /pipelex-integrate; regenerate after source changes.",
+  "generator": "pipelex-integrate",
+  "method": {
+    "files": [
+      "methods/political_summary/main.mthds"
+    ]
+  },
+  "target": "python-pydantic",
+  "pipe": {
+    "output": "political_summary.InterestSummary",
+    "inputs": {
+      "request": "political_summary.SummaryRequest"
+    },
+    "pipe_ref": "political_summary.summarize_interest"
+  },
+  "bundle_dir": "methods/political_summary",
+  "sources": {
+    "methods/political_summary/main.mthds": "70803969dd61b7397f428286ddca7788256042c243cb5f9169d3862b33c5e72c"
+  }
+}

@@ -2,9 +2,12 @@
 from copy import deepcopy
 from datetime import date
 from time import monotonic
+import os
 
 from backend.dust.client import research
 from backend.dust.adapter import validate_dust_report
+from backend.summary_service import synthesize_report
+from backend.pipelex_summary import analyze_summary
 
 
 def search(topic: str, start: str, end: str, mode: str = 'dust') -> dict:
@@ -42,4 +45,8 @@ def search(topic: str, start: str, end: str, mode: str = 'dust') -> dict:
     if len(kept) > 4 or len(contacts) > 3:
         raise ValueError('Réponse au-delà du périmètre de l’interface.')
     validate_dust_report(report)
+    if os.environ.get('ENABLE_PIPELEX_CALLS', '').lower() == 'true':
+        report = synthesize_report(topic.strip(), report, analyze_summary)
+    else:
+        report['limitations'].append('Synthèse Pipelex désactivée : les résumés affichés proviennent de Dust.')
     return {'mode': 'dust', 'report': report, 'duration_seconds': monotonic() - began}

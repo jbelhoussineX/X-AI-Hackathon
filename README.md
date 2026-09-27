@@ -2,7 +2,13 @@
 
 Agent de recherche documentaire et de veille politique sur la France, développé
 par trois personnes pour un hackathon de trois jours. Il vise à présenter des
-documents, leurs sources et leurs évolutions sans recommander de choix politique.
+documents liés aux centres d'intérêt choisis et à les expliquer avec leurs sources,
+sans recommander de choix politique.
+
+Le parcours principal est **sujet → recherche Dust → synthèse Pipelex → interface**.
+La [méthode de synthèse](methods/political_summary/README.md) explique le contenu
+et son lien au sujet à partir des extraits fournis. La comparaison de deux versions
+reste une option future ; elle n'est pas utilisée dans la recherche.
 
 ## Lancer la page de l'équipe
 
@@ -34,11 +40,13 @@ Ne pas activer `ENABLE_PIPELEX_CALLS` tant qu'un essai n'a pas été autorisé.
 
 - Interface Streamlit : recherche, fiches, preuves, contacts, export, veilles de session.
 - Dust : contrat JSON et client préparés, filtre de dates côté service, appels désactivés.
-- Pipelex : méthode de comparaison, types Pydantic générés, client et validation locale.
+- Pipelex : synthèse par centre d'intérêt raccordée au service, types Pydantic et
+  contrôles de références. Exécution désactivée ; qualité du modèle non testée.
 - SQLite : stockage transactionnel et actualisations simulées testés ; pas encore reliés
   aux veilles de session de l'interface.
-- À faire : collecte réelle des pages, parcours complet Dust → sources → Pipelex → SQLite,
-  affichage des changements dans la page existante, puis essais réels autorisés.
+- À faire : vérifier avec le coéquipier Dust un rapport réel et ses sources,
+  puis évaluer la synthèse lors d'un essai explicitement autorisé.
+  Le stockage persistant et la comparaison dans le temps sont des extensions.
   Aucune actualisation quotidienne n'est active.
 
 Voir le [guide de raccordement](backend/INTEGRATION.md) pour les fonctions disponibles,
@@ -54,7 +62,8 @@ X-AI-Hackathon/
 ├── backend/                     # Validation, clients, SQLite, simulation
 │   ├── dust/
 │   └── generated/political_watch/
-├── methods/political_watch/     # Méthode Pipelex
+├── methods/political_summary/   # Synthèse liée au sujet
+├── methods/political_watch/     # Comparaison future, hors recherche
 ├── data/                        # Données locales ignorées par Git
 ├── scripts/codegen_check.py
 ├── tests/                       # Tests et exemples fictifs
@@ -70,10 +79,11 @@ X-AI-Hackathon/
 ```powershell
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 .\.venv\Scripts\python.exe scripts/codegen_check.py backend/generated/political_watch
+.\.venv\Scripts\python.exe scripts/codegen_check.py backend/generated/political_summary
 .\.venv\Scripts\python.exe -m mypy backend/pipelex_comparison.py backend/clients.py backend/generated backend/dust/client.py src/service.py
 ```
 
-52 tests avec les dépendances UI installées, dont interactions de démonstration
+62 tests avec les dépendances UI installées, dont interactions de démonstration
 Streamlit et clients simulés. Aucun de ces tests n'exécute Dust ou Pipelex.
 Les fichiers générés ne doivent pas être modifiés à la main.
 
