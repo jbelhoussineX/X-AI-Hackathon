@@ -142,3 +142,27 @@ Vérifier dans le règlement comment les ressources préexistantes doivent être
 - Vidéo, deux minutes maximum : …
 - Accès du jury au dépôt : …
 - Date/heure de soumission et confirmation : …
+
+## Fichiers du dépôt GitHub de l'équipe
+
+Le dépôt partagé apporte également `frontend/interface_b.py`, une interface Streamlit
+avec résultats, exports, historique et veilles conservées dans la session.
+Le point d'entrée du socle reste `app.py`. La présence du dossier `frontend/`
+n'ajoute pas de frontend React ni de serveur supplémentaire.
+Les dossiers `backend/`, `data/` et `scripts/` sont des emplacements préparatoires.
+La sauvegarde SQLite, Pipelex et l'actualisation quotidienne restent des extensions.
+
+Sur le Mac de Maison, l'environnement existant s'utilise ainsi depuis la racine :
+```bash
+conda activate xia-hackathon
+python -m pytest -q
+python -m streamlit run app.py
+```
+Dans cet environnement, utiliser `python` (3.12), car `python3` pointe vers un ancien Python.
+Pour ouvrir l'interface de l'équipe depuis la même racine :
+```bash
+python -m streamlit run frontend/interface_b.py --server.address 127.0.0.1
+```
+La connexion réelle à Dust reste à vérifier séparément avec un accès partenaire autorisé.
+
+Le dépôt partagé fournit la licence MIT dans `LICENSE`.

@@ -9,3 +9,11 @@ __pycache__/
 .streamlit/secrets.toml
 private/
 *.log
+
+# Règles supplémentaires du dépôt partagé.
+venv/
+node_modules/
+.next/
+dist/
+.vscode/
+.idea/
