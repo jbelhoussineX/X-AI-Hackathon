@@ -19,10 +19,19 @@ nécessite le consentement dans le menu et un clic sur le bouton. Elle utilise
 relance automatique après erreur. Les frais des outils web sont distincts des
 tokens ; ce nombre d'appels n'est pas un plafond monétaire.
 
-**Validation : 60 tests hors ligne réussis**, dont le véritable parcours Pipelex
+**Validation : 116 tests hors ligne réussis**, dont le véritable parcours Pipelex
 avec transport OpenAI simulé et les tests Streamlit. La connexion texte OpenAI
-a été vérifiée auparavant ; **le nouveau parcours de recherche web n'a pas été
-testé avec une clé réelle**. Aucun résultat documentaire réel n'est encore validé.
+a été vérifiée auparavant. Un diagnostic web réel autorisé a reçu HTTP 400 avec
+`gpt-4.1-mini` (paramètre `tools`). La recherche utilise désormais `gpt-5-mini`
+avec un effort de raisonnement faible ; l'analyse et la rédaction restent sur
+`gpt-4o-mini`. Un essai utilisateur a ensuite atteint `rediger`, mais le rapport
+a été rejeté. Le diagnostic affiche désormais le motif et le champ obligatoire
+vide, ou la cause de réponse incomplète. Le format de génération interdit les
+chaînes vides dans les champs déjà exigés non vides par le validateur local,
+et impose au plus quatre documents et trois interlocuteurs avec `maxItems`.
+Une page de contact sans preuve dédiée est remplacée par `null` avant validation,
+avec une explication dans les limites ; les autres preuves restent obligatoires.
+**Aucun résultat documentaire réel n'est encore validé.**
 
 Voir [le branchement et ses limites](docs/BRANCHEMENT_STREAMLIT.md) et
 [l'installation Pipelex](docs/INSTALLATION_PIPELEX.md).
