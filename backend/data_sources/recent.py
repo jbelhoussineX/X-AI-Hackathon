@@ -2,6 +2,7 @@
 
 These are inventory signals, not inferred legal status or LLM-generated claims.
 """
+import calendar
 from datetime import date, datetime, timedelta, timezone
 import io
 import json
@@ -93,13 +94,22 @@ def senate_events(payload, topic, start, end):
     return events
 
 
-def search_recent(topic: str, days: int = 30, *, today=None, transport=None):
+def search_recent(topic: str, days: int = 3, *, months=None, today=None, transport=None):
     if not isinstance(topic, str) or not 3 <= len(topic.strip()) <= 300 or not senate._terms(topic):
         raise ValueError('Indiquer un sujet précis de 3 à 300 caractères.')
-    if days not in (7, 30):
-        raise ValueError('Choisir 7 ou 30 jours.')
+    if type(days) is not int or not 1 <= days <= 90:
+        raise ValueError('Choisir entre 1 et 90 jours.')
     today = today or date.today()
-    start, end = (today - timedelta(days=days - 1)).isoformat(), today.isoformat()
+    if months is not None:
+        if type(months) is not int or not 1 <= months <= 12:
+            raise ValueError('Choisir entre 1 et 12 mois.')
+        absolute_month = today.year * 12 + today.month - 1 - months
+        year, month = divmod(absolute_month, 12)
+        month += 1
+        start_date = date(year, month, min(today.day, calendar.monthrange(year, month)[1]))
+    else:
+        start_date = today - timedelta(days=days - 1)
+    start, end = start_date.isoformat(), today.isoformat()
     events, datasets = [], []
     limits = [
         'Signaux des inventaires officiels, sans synthèse IA : les pages des dossiers ne sont pas relues ici.',
@@ -126,6 +136,14 @@ def search_recent(topic: str, days: int = 30, *, today=None, transport=None):
     events.extend(fresh)
     datasets.extend(feed_datasets)
     limits.extend(feed_limits)
+    from backend.data_sources.debates import collect as collect_debates
+    debates, debate_datasets, debate_limits = collect_debates(topic, start, end, transport=transport)
+    events.extend(debates)
+    datasets.extend(debate_datasets)
+    limits.extend(debate_limits)
+    for event in events:
+        event.setdefault('category', 'procedure')
+        event.setdefault('publication_date', event.get('published_at', '')[:10] or None)
     # Preserve distinct versions/acts. Exact repetitions alone are removed.
     unique: dict[tuple, dict] = {}
     for event in events:

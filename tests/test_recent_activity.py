@@ -45,6 +45,7 @@ def test_senate_old_deposit_recent_promulgation():
 
 def test_fresh_fetch_on_every_click_partial_outage_and_inclusive_window(monkeypatch):
     monkeypatch.setattr('backend.data_sources.live_feeds.collect', lambda *a, **kw: ([], [], []))
+    monkeypatch.setattr('backend.data_sources.debates.collect', lambda *a, **kw: ([], [], []))
     fetch = Mock(return_value=(archive(), {'retrieved_at': '2026-09-27T12:00:00Z', 'sha256': 'test'}))
     monkeypatch.setattr('backend.data_sources.recent.assembly.fetch_dataset', fetch)
     monkeypatch.setattr('backend.data_sources.recent.senate.fetch_dataset', Mock(side_effect=ValueError('SECRET')))
@@ -74,10 +75,22 @@ def test_ui_only_collects_on_explicit_click(monkeypatch):
     app = AppTest.from_string('from frontend.recent_activity import render\nrender()').run()
     fetch.assert_not_called()
     app.text_input(key='recent_topic').set_value('logement')
-    app.radio[0].set_value(7)
+    assert app.number_input(key='recent_amount').value == 3
+    assert app.selectbox(key='recent_unit').value == 'mois'
     app.button[0].click().run()
     assert not app.exception
-    fetch.assert_called_once_with('logement', 7)
+    fetch.assert_called_once_with('logement', months=3)
     assert 'Aucun événement' in app.info[0].value
     app.run()
     fetch.assert_called_once()
+
+
+@pytest.mark.parametrize('today,months,start', [(date(2026,9,27),3,'2026-06-27'),(date(2026,3,31),1,'2026-02-28'),(date(2024,3,31),1,'2024-02-29')])
+def test_calendar_months(monkeypatch, today, months, start):
+    monkeypatch.setattr('backend.data_sources.live_feeds.collect', lambda *a, **kw: ([], [], []))
+    monkeypatch.setattr('backend.data_sources.debates.collect', lambda *a, **kw: ([], [], []))
+    monkeypatch.setattr('backend.data_sources.recent.assembly.fetch_dataset', Mock(side_effect=ValueError()))
+    monkeypatch.setattr('backend.data_sources.recent.senate.fetch_dataset', Mock(side_effect=ValueError()))
+    output = search_recent('logement', months=months, today=today)
+    assert output['start'] == start
+    assert output['end'] == today.isoformat()

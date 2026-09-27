@@ -1,0 +1,20 @@
+{
+  "generator": "pipelex-integrate",
+  "method": {
+    "files": [
+      "methods/recent_brief/main.mthds"
+    ]
+  },
+  "target": "python-pydantic",
+  "pipe": {
+    "pipe_ref": "recent_brief.summarize",
+    "inputs": {
+      "request": "recent_brief.Request"
+    },
+    "output": "recent_brief.Brief"
+  },
+  "bundle_dir": "methods/recent_brief",
+  "sources": {
+    "methods/recent_brief/main.mthds": "f2f5540116d004df3b81a0f1597c75ec8dace9d709e51cfaeb693faf5e804201"
+  }
+}

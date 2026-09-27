@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def read_bundle(name: str) -> list[str]:
-    if name not in ('political_search', 'political_report'):
+    if name not in ('political_search', 'political_report', 'recent_brief'):
         raise ValueError('Méthode inconnue.')
     files = sorted((ROOT / 'methods' / name).rglob('*.mthds'))
     hashes = {p.relative_to(ROOT).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in files}

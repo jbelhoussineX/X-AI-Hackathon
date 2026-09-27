@@ -14,7 +14,8 @@ import httpx
 
 from backend.data_sources.senate import _terms
 
-SENATE_FEEDS = ('https://www.senat.fr/rss/textes.rss', 'https://www.senat.fr/rss/rapports.rss')
+SENATE_FEEDS = ('https://www.senat.fr/rss/textes.rss', 'https://www.senat.fr/rss/rapports.rss',
+                'https://www.senat.fr/rss/presse.rss')
 PUBLICATIONS = 'https://www.assemblee-nationale.fr/dyn/opendata/list-publication/publication_'
 MAX_BYTES = 2_000_000
 MAX_DETAILS = 12
@@ -42,7 +43,7 @@ def plain(text):
     return ' '.join(html.unescape(re.sub(r'<[^>]*>', ' ', html.unescape(text))).split())
 
 
-def fetch(client, url, deadline):
+def fetch(client, url, deadline, *, max_bytes=MAX_BYTES):
     remaining = deadline - monotonic()
     if remaining <= 0:
         raise ValueError('Budget de collecte atteint.')
@@ -53,7 +54,7 @@ def fetch(client, url, deadline):
         body = bytearray()
         for chunk in response.iter_bytes():
             body.extend(chunk)
-            if len(body) > MAX_BYTES or monotonic() > deadline:
+            if len(body) > max_bytes or monotonic() > deadline:
                 raise ValueError('Flux trop volumineux ou délai dépassé.')
     return bytes(body), {'source_url': url, 'retrieved_at': datetime.now(timezone.utc).isoformat(),
                          'sha256': hashlib.sha256(body).hexdigest()}
@@ -82,7 +83,8 @@ def rss_events(payload, topic, start, end, url):
                        'event_date': day, 'event': 'Publication signalée dans le flux RSS',
                        'decision': None, 'provider': 'senat-rss', 'date_kind': 'pubDate du flux (pas date de dépôt)',
                        'source_url': url, 'source_location': 'item/link=' + link,
-                       'dossier_url': link, 'description': description, 'published_at': instant.isoformat()})
+            'dossier_url': link, 'description': description, 'published_at': instant.isoformat(),
+            'category': 'actualite' if url.endswith('/presse.rss') else 'publication'})
     return events
 
 
@@ -119,7 +121,8 @@ def amendment_event(payload, topic, timestamp, url, list_url, line):
             'decision': None, 'provider': 'assemblee-publications',
             'date_kind': 'Horodatage de mise en ligne (pas adoption ni dépôt)',
             'source_url': list_url, 'source_location': f'ligne {line} ; détail XML {url}',
-            'dossier_url': url, 'published_at': timestamp,
+            'dossier_url': url, 'published_at': timestamp, 'category': 'amendement',
+            'content_passages': [content[:12000]],
             'description': 'Sujet repéré dans le dispositif ou l’exposé sommaire ; cela ne signifie pas que l’amendement est adopté.'}
 
 

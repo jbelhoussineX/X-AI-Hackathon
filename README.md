@@ -1,5 +1,10 @@
 # X-AI-Hackathon — Sed Lex
 
+**Nouveau :** le bloc Actualités récentes inclut les débats parlementaires et les
+communiqués du Sénat, avec une synthèse Pipelex facultative des passages collectés.
+Voir [les sources, le fonctionnement et les limites](docs/ACTUALITES_RECENTES.md).
+Le rapport législatif historique ci-dessous conserve son contrat et son filtre de publication.
+
 Agent de recherche documentaire sur les politiques françaises, développé pour un
 hackathon de trois jours. L’utilisateur choisit un sujet et une période ; le
 programme recherche des textes parlementaires et présente un résumé, des preuves
