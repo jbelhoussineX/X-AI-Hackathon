@@ -50,6 +50,8 @@ def search(topic: str, start: str, end: str, mode: str = 'demo') -> dict:
         'mode': mode, 'run_at_utc': datetime.now(timezone.utc).isoformat(),
         'duration_seconds': round(time.monotonic() - t0, 2),
         'conversation_id': conversation_id,
-        'validation': 'Structure contrôlée. Contenus et extraits non vérifiés indépendamment par ce code.',
+        'validation': ('Structure contrôlée. En collecte officielle, présence des extraits contrôlée '
+                       'dans le corpus ; interprétation et actualité à relire.' if mode == 'pipelex'
+                       else 'Structure contrôlée. Contenus et extraits non vérifiés indépendamment par ce code.'),
         'report': report,
     }

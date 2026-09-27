@@ -541,10 +541,11 @@ def page_recherche(mode: str) -> None:
     if mode == "demo":
         st.warning("Mode démonstration : des données fictives pour construire l'interface sans crédits ni clé API.")
     else:
-        st.info("Recherche réelle via Pipelex et OpenAI : 3 à 4 appels de modèle, avec recherche web. Les crédits API sont utilisés uniquement après ton clic.")
+        st.info("Par défaut : collecte publique Sénat et Assemblée, puis deux appels OpenAI pour analyser et rédiger si des pages sont trouvées. Les crédits API sont utilisés uniquement après ton clic.")
+        st.caption("Commence par un mot-clé, par exemple logement, transport ou énergie. Le repérage est lexical et sa couverture reste limitée.")
     with st.form("b_search_form"):
         st.subheader("Quel sujet souhaites-tu explorer ?")
-        sujet = st.text_input("Sujet de recherche", max_chars=300, placeholder="Ex. : accessibilité des transports publics", key="b_topic")
+        sujet = st.text_input("Sujet de recherche", max_chars=300, placeholder="Ex. : logement", key="b_topic")
         a, b, c = st.columns([1, 1, 1])
         debut = a.date_input("Publié à partir du", value=date(2024, 1, 1), key="b_start")
         fin = b.date_input("Publié jusqu'au", value=date.today(), key="b_end")
@@ -644,6 +645,7 @@ def page_aide() -> None:
         st.write("Sauvegarde SQLite, comparaison entre actualisations et déclenchement quotidien.")
         st.caption("Une recherche consulte des sources officielles, évalue les informations manquantes et peut faire un seul complément avant de produire le rapport.")
     with st.expander("Comprendre les sources et les dates"):
+        st.write("La collecte officielle repère les dossiers selon leur dépôt initial ; le rapport contrôle ensuite la date de publication. Assemblée : 17e législature uniquement. Les extraits sont recherchés dans le texte collecté, ce qui ne valide pas leur interprétation.")
         st.write("Une source citée n'est pas automatiquement une source vérifiée. L'étape de procédure, le résumé et le contact peuvent avoir des preuves différentes.")
         st.write("La date d'exécution indique quand la requête s'est terminée. Elle ne prouve pas que chaque page a été revérifiée indépendamment.")
     with st.expander("Données et confidentialité"):

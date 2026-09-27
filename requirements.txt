@@ -5,3 +5,5 @@ jsonschema==4.26.0
 pytest==9.0.2
 pipelex[cli]==0.67.0
 openai==3.3.0
+httpx==0.28.1
+pypdf==6.19.0

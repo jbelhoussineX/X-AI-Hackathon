@@ -14,24 +14,29 @@ python -m streamlit run app.py --server.address 127.0.0.1 --server.fileWatcherTy
 ```
 
 L'ouverture et la navigation ne déclenchent aucun appel IA. Une recherche réelle
-nécessite le consentement dans le menu et un clic sur le bouton. Elle utilise
-3 à 4 appels de modèle, avec au plus une recherche complémentaire et aucune
-relance automatique après erreur. Les frais des outils web sont distincts des
-tokens ; ce nombre d'appels n'est pas un plafond monétaire.
+nécessite le consentement dans le menu et un clic. La source par défaut est
+`POLITICAL_DATA_SOURCE=official` : exports publics Sénat et Assemblée nationale,
+sans clé ni outil web payant. OpenAI (`gpt-4o-mini`) évalue les manques, peut demander
+un complément de collecte et rédige : **deux appels de modèle**, ou zéro si le
+corpus initial est vide. Aucun compte Pipelex hébergé n'est nécessaire.
 
-**Validation : 116 tests hors ligne réussis**, dont le véritable parcours Pipelex
-avec transport OpenAI simulé et les tests Streamlit. La connexion texte OpenAI
-a été vérifiée auparavant. Un diagnostic web réel autorisé a reçu HTTP 400 avec
-`gpt-4.1-mini` (paramètre `tools`). La recherche utilise désormais `gpt-5-mini`
-avec un effort de raisonnement faible ; l'analyse et la rédaction restent sur
-`gpt-4o-mini`. Un essai utilisateur a ensuite atteint `rediger`, mais le rapport
-a été rejeté. Le diagnostic affiche désormais le motif et le champ obligatoire
-vide, ou la cause de réponse incomplète. Le format de génération interdit les
-chaînes vides dans les champs déjà exigés non vides par le validateur local,
-et impose au plus quatre documents et trois interlocuteurs avec `maxItems`.
-Une page de contact sans preuve dédiée est remplacée par `null` avant validation,
-avec une explication dans les limites ; les autres preuves restent obligatoires.
-**Aucun résultat documentaire réel n'est encore validé.**
+Commencer avec un mot-clé simple, par exemple **logement**. La collecte est lexicale,
+limitée à la 17e législature pour l'Assemblée et à 60 000 caractères au total.
+Le repérage filtre le dépôt initial ; le rapport filtre ensuite la publication.
+Cette différence et les limites de couverture sont signalées à l'utilisateur.
+Les citations du rapport sont contrôlées contre le corpus effectivement collecté.
+Leur présence ne certifie pas l'interprétation ni l'actualité juridique.
+
+L'ancien parcours reste disponible avec `POLITICAL_DATA_SOURCE=web` (3 à 4 appels
+et outil web payant). Aucun repli automatique vers ce mode n'est effectué.
+Les corrections du rapport et les plafonds de quatre documents/trois interlocuteurs
+restent actifs. Une page de contact sans preuve dédiée est omise avec une explication.
+
+**Validation : 153 tests hors ligne réussis**, dont les collecteurs importés de
+l'équipe, les parcours Pipelex officiel et web et l'interface Streamlit.
+Le parcours web précédent a fonctionné lors d'un essai utilisateur ; la nouvelle
+collecte officielle intégrée n'a pas été testée avec les fournisseurs réels.
+Voir [le collecteur et ses limites](backend/data_sources/README.md).
 
 Voir [le branchement et ses limites](docs/BRANCHEMENT_STREAMLIT.md) et
 [l'installation Pipelex](docs/INSTALLATION_PIPELEX.md).

@@ -32,6 +32,7 @@ ERRORS = {
 # Fixed vocabulary only: never forward raw API messages, headers, request bodies
 # or arbitrary field names. These details also survive Pipelex's exception wrappers.
 VALIDATION_REASONS = {
+    'excerpt_not_found': 'Un extrait du rapport est absent du texte officiel effectivement collecté.',
     'report_contract': 'Une règle de validation du rapport a échoué.',
     'report_schema': 'La structure JSON ne correspond pas au schéma du rapport.',
     'item_limit': 'Le rapport dépasse quatre documents ou trois interlocuteurs.',
@@ -107,7 +108,7 @@ def run_pipelex(topic: str, start: str, end: str) -> tuple[dict, None]:
     try:
         result = subprocess.run(
             [sys.executable, '-m', 'src.pipelex_worker'], cwd=ROOT,
-            input=request, text=True, capture_output=True, timeout=240,
+            input=request, text=True, capture_output=True, timeout=420,
             env=environment, check=False,
         )
     except subprocess.TimeoutExpired:

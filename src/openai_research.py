@@ -132,6 +132,8 @@ class Run:
     source_urls: set[str] = field(default_factory=set)
     notes: list[str] = field(default_factory=list)
     limitations: list[str] = field(default_factory=list)
+    data_source: str = field(default_factory=lambda: os.environ.get('POLITICAL_DATA_SOURCE', 'official'))
+    prepared: dict | None = None
 
     async def call(self, *, prompt: str, search: bool = False, schema: dict | None = None,
                    max_tokens: int = 6000):
@@ -169,6 +171,15 @@ class Run:
         return response
 
     async def research(self, query: str | None = None) -> str:
+        if self.data_source not in ('official', 'web'):
+            raise ResearchFailure('configuration')
+        if self.data_source == 'official':
+            import asyncio
+            from backend.data_sources.official import prepare, merge_prepared, fetched_corpus
+            prepared = await asyncio.to_thread(prepare, query or self.topic, self.start, self.end)
+            self.prepared = prepared if self.prepared is None else merge_prepared(self.prepared, prepared)
+            self.source_urls = set(fetched_corpus(self.prepared['corpus']))
+            return self.corpus()
         prompt = (
             'Recherche des projets ou propositions de loi français liés au sujet. '
             'Consulte les pages officielles et relève titre, type, date de publication, '
@@ -192,10 +203,16 @@ class Run:
         return self.corpus()
 
     def corpus(self) -> str:
+        if self.data_source == 'official' and self.prepared is not None:
+            return json.dumps({'corpus': self.prepared['corpus'],
+                               'source_urls': sorted(self.source_urls),
+                               'limitations': [*self.prepared['limitations'], *self.limitations]}, ensure_ascii=False)
         return json.dumps({'notes': self.notes, 'source_urls': sorted(self.source_urls),
                            'limitations': self.limitations}, ensure_ascii=False)
 
     async def review(self) -> dict:
+        if self.data_source == 'official' and not self.source_urls:
+            return {'needs_more': False, 'followup_query': None, 'limitations': []}
         prompt = (
             'Évalue uniquement les manques documentaires du corpus ci-dessous pour le sujet '
             + json.dumps(self.topic, ensure_ascii=False) + '. '
@@ -205,6 +222,14 @@ class Run:
             'Énumère brièvement les incertitudes dans limitations, sans raisonnement privé.\n'
             + self.corpus()
         )
+        if self.data_source == 'official':
+            prompt += (
+                '\nLe complément utilise les mêmes inventaires officiels et une recherche lexicale '
+                'dans les titres/thèmes : donne UN mot-clé français pertinent pour le sujet, '
+                'différent de la demande initiale, pas une phrase ou une instruction. '
+                'Demande un complément uniquement si ce mot peut trouver des textes utiles supplémentaires. '
+                'Aucune recherche web ni récupération d’email n’est disponible.'
+            )
         response = await self.call(prompt=prompt, schema=REVIEW_SCHEMA, max_tokens=700)
         try:
             from jsonschema import Draft202012Validator
@@ -223,6 +248,15 @@ class Run:
 
     async def finish(self) -> dict:
         if not self.source_urls:
+            if self.data_source == 'official' and self.prepared is not None:
+                return validate_report({
+                    'schema_version': '1.0', 'topic': self.topic,
+                    'scope': 'France ; inventaires Sénat et Assemblée nationale (17e législature).',
+                    'documents': [], 'contacts': [],
+                    'limitations': [*self.prepared['limitations'],
+                                    'Aucun résultat trouvé dans le corpus consulté : aucune page exploitable, '
+                                    'aucun appel IA de rédaction effectué.'],
+                })
             raise ResearchFailure('sources')
         prompt = (
             'Construis le rapport JSON uniquement à partir du corpus. Ne complète pas de mémoire. '
@@ -274,11 +308,20 @@ class Run:
                 document['uncertainties'].append('Date de publication inconnue : période non confirmée.')
         report['topic'] = self.topic
         report['limitations'].extend(self.limitations)
-        report['limitations'].append(
-            'Corpus limité aux sources officielles de l’Assemblée nationale, du Sénat, de Légifrance '
-            'et de Vie publique. Les URLs figurent dans les sources de recherche du fournisseur ; '
-            'le code ne vérifie pas indépendamment la fidélité des extraits ni des résumés.'
-        )
+        if self.data_source == 'official' and self.prepared is not None:
+            from backend.data_sources.official import fetched_corpus
+            from backend.source_verification import verify_sources
+            report['limitations'].extend(self.prepared['limitations'])
+            verified = verify_sources(report, fetched_sources=fetched_corpus(self.prepared['corpus']))
+            if verified.checks and not verified.all_matched:
+                raise ResearchFailure('sources', reason='excerpt_not_found')
+            report = verified.report
+        else:
+            report['limitations'].append(
+                'Corpus limité aux sources officielles de l’Assemblée nationale, du Sénat, de Légifrance '
+                'et de Vie publique. Les URLs figurent dans les sources de recherche du fournisseur ; '
+                'le code ne vérifie pas indépendamment la fidélité des extraits ni des résumés.'
+            )
         if not report['documents']:
             report['limitations'].append('Aucun résultat trouvé dans le corpus consulté pour cette recherche.')
         return validate_report(report)

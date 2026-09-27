@@ -19,6 +19,7 @@ URL = 'https://www.assemblee-nationale.fr/dyn/test-fixture-fictive'
 
 @pytest.fixture(autouse=True)
 def offline(monkeypatch):
+    monkeypatch.setenv('POLITICAL_DATA_SOURCE', 'web')
     monkeypatch.setenv('PYTHON_DOTENV_DISABLED', '1')
     monkeypatch.setenv('DO_NOT_TRACK', '1')
     monkeypatch.setenv('OPENAI_API_KEY', 'offline-test-placeholder')
