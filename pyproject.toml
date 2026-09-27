@@ -1,0 +1,7 @@
+[tool.ruff]
+extend-exclude = ["backend/generated", "scripts/codegen_check.py"]
+
+[tool.mypy]
+ignore_missing_imports = true
+check_untyped_defs = true
+

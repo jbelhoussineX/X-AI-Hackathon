@@ -14,3 +14,11 @@ dist/
 .DS_Store
 .vscode/
 .idea/
+
+# Local persistence, downloaded sources and run output
+*.sqlite3
+*.sqlite3-*
+*.db
+*.db-*
+/data/local/
+/runs/

@@ -1,0 +1,21 @@
+{
+  "comment": "Written by /pipelex-integrate. Regenerate types after any method change; do not hand-edit.",
+  "generator": "pipelex-integrate",
+  "method": {
+    "files": [
+      "methods/political_watch/main.mthds"
+    ]
+  },
+  "target": "python-pydantic",
+  "pipe": {
+    "inputs": {
+      "request": "political_watch.ComparisonRequest"
+    },
+    "output": "political_watch.ChangeReport",
+    "pipe_ref": "political_watch.compare_document"
+  },
+  "bundle_dir": "methods/political_watch",
+  "sources": {
+    "methods/political_watch/main.mthds": "72ade92cebe864c65315a18d0b284388ab0847703eaeda84609701f9995e3411"
+  }
+}
