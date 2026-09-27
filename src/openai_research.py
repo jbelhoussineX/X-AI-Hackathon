@@ -251,7 +251,7 @@ class Run:
             if self.data_source == 'official' and self.prepared is not None:
                 return validate_report({
                     'schema_version': '1.0', 'topic': self.topic,
-                    'scope': 'France ; inventaires Sénat et Assemblée nationale (17e législature).',
+                    'scope': 'France ; inventaires Sénat et Assemblée nationale (15e à 17e législatures selon la période).',
                     'documents': [], 'contacts': [],
                     'limitations': [*self.prepared['limitations'],
                                     'Aucun résultat trouvé dans le corpus consulté : aucune page exploitable, '

@@ -21,7 +21,9 @@ un complément de collecte et rédige : **deux appels de modèle**, ou zéro si 
 corpus initial est vide. Aucun compte Pipelex hébergé n'est nécessaire.
 
 Commencer avec un mot-clé simple, par exemple **logement**. La collecte est lexicale,
-limitée à la 17e législature pour l'Assemblée et à 60 000 caractères au total.
+étendue aux 15e, 16e et 17e législatures pour l'Assemblée (recherche depuis juin 2017, incluant toute la 15e législature),
+avec un corpus de 60 000 caractères au total. Un [catalogue complet des notices](backend/data_sources/README.md)
+peut être exporté sans IA ; le rapport reste limité à quatre documents.
 Le repérage filtre le dépôt initial ; le rapport filtre ensuite la publication.
 Cette différence et les limites de couverture sont signalées à l'utilisateur.
 Les citations du rapport sont contrôlées contre le corpus effectivement collecté.
@@ -32,10 +34,15 @@ et outil web payant). Aucun repli automatique vers ce mode n'est effectué.
 Les corrections du rapport et les plafonds de quatre documents/trois interlocuteurs
 restent actifs. Une page de contact sans preuve dédiée est omise avec une explication.
 
-**Validation : 153 tests hors ligne réussis**, dont les collecteurs importés de
+**Validation : 162 tests hors ligne réussis**, dont les collecteurs importés de
 l'équipe, les parcours Pipelex officiel et web et l'interface Streamlit.
-Le parcours web précédent a fonctionné lors d'un essai utilisateur ; la nouvelle
-collecte officielle intégrée n'a pas été testée avec les fournisseurs réels.
+Le 27 septembre 2026, les trois archives Assemblée et l'export Sénat ont été
+téléchargés sans appel IA : 9 384 notices retenues depuis le 21 juin 2017 (6 587 Assemblée,
+2 797 Sénat), dont toutes les 2 927 notices de la 15e reconnues dans l’archive,
+dans `data/local/catalogue-depuis-15e-2026-09-27.json` sur le Mac de l'équipe.
+Le fichier est ignoré par Git ; la commande documentée permet de le régénérer.
+Le parcours web précédent a fonctionné lors d'un essai utilisateur ; la génération
+IA sur la nouvelle couverture historique n'a pas été testée avec les fournisseurs réels.
 Voir [le collecteur et ses limites](backend/data_sources/README.md).
 
 Voir [le branchement et ses limites](docs/BRANCHEMENT_STREAMLIT.md) et

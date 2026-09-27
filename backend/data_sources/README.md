@@ -18,17 +18,49 @@ thèmes. Un LLM peut décider d'un complément avec un autre mot-clé, au plus u
 Le collecteur peut aussi être utilisé sans IA, depuis l'environnement Python :
 
 ```bash
-python -m backend.data_sources.official --topic logement --start 2024-01-01 --end 2026-09-27 --output data/local/collecte-logement.json
+python -m backend.data_sources.official --topic logement --start 2017-06-21 --end 2026-09-27 --output data/local/collecte-logement.json
 ```
 
 Cette commande télécharge des données publiques. Utiliser un nom de sortie neuf.
 `data/local/` est ignoré par Git. Il ne s'agit pas d'une base SQLite synchronisée :
 les exports sont téléchargés à la demande et le corpus est construit en mémoire.
 
+## Catalogue depuis le début de la 15e législature
+
+Pour conserver toutes les notices reconnues dans les inventaires, sans mot-clé,
+sans limite de résultats et sans appel IA :
+
+```bash
+conda activate xia-hackathon
+python -m backend.data_sources.catalogue --output data/local/catalogue-depuis-15e.json
+```
+
+La 15e législature est incluse dans son ensemble. La période par défaut va du **21 juin 2017 à aujourd'hui**. Les options
+`--start` et `--end` permettent de la fixer. Utiliser un nouveau nom de fichier
+à chaque actualisation. Le fichier conserve les dates, liens, identifiants,
+provenances et empreintes des exports ; il reste local et n'est pas poussé sur Git.
+Il ne contient pas tous les textes intégraux et n'est pas utilisé comme cache par
+Streamlit : chaque recherche consulte à nouveau les exports officiels.
+
+Le catalogue retient une notice si son dépôt, sa publication ou sa promulgation
+connue est dans la période ; `period_matched_on` précise la ou les dates retenues.
+Un dossier déposé avant 2020 mais promulgué en 2020 peut ainsi être inclus côté
+Sénat. Les notices sans date sont comptées et exclues. Les versions et les deux
+chambres sont conservées séparément : **une notice n'est pas une loi distincte**.
+
+Une archive indisponible produit un catalogue `partial` et un code de sortie 1,
+avec les autres sources disponibles conservées. `ok` signifie que les exports
+configurés ont été téléchargés et reconnus, pas que toutes les lois françaises
+sont représentées. Aucun accès Légifrance ni certification de droit en vigueur.
+Il n'y a pas de synchronisation quotidienne.
+
 ## Sources et limites
 
-- Assemblée : archive JSON publique de la **17e législature**, limites de taille
-  réseau et de décompression, sans extraction ZIP sur disque.
+- Assemblée : archives JSON publiques des **15e, 16e et 17e législatures**.
+  La recherche choisit les archives selon la période, avec recouvrement des
+  années de transition 2022 et 2024 ; le catalogue les lit toutes.
+  Limites de taille réseau et de décompression, sans extraction ZIP sur disque.
+  Les indisponibilités sont signalées par législature sans supprimer les autres.
 - Sénat : export CSV DOSLEG et lecture de pages HTML/PDF liées aux dossiers.
 - Trois notices par institution et par collecte. La présélection filtre le
   **dépôt initial**, distinct de la publication filtrée lors de la validation du
@@ -40,6 +72,12 @@ les exports sont téléchargés à la demande et le corpus est construit en mém
   leur interprétation, la date ou l'actualité juridique.
 - Légifrance/PISTE n'est pas connecté. Aucune clé Assemblée/Sénat n'est attendue.
 
+Sources officielles des exports :
+[15e législature](https://data.assemblee-nationale.fr/archives-anterieures/archives-15e/dossiers-legislatifs),
+[16e législature](https://data.assemblee-nationale.fr/archives-16e/dossiers-legislatifs),
+[17e législature](https://data.assemblee-nationale.fr/travaux-parlementaires/dossiers-legislatifs),
+[DOSLEG](https://data.senat.fr/dosleg/).
+
 L'ancien mode web reste disponible via `POLITICAL_DATA_SOURCE=web` ; il utilise
 3 à 4 appels de modèle et l'outil web payant. Aucun basculement automatique.
 
@@ -49,4 +87,13 @@ Les tests importés de l'équipe couvrent les archives, CSV, dates, limites et l
 Les tests d'intégration utilisent le moteur Pipelex réel et les deux transports
 HTTP simulés (`httpx` pour les données, `httpx2` pour le SDK OpenAI). Ils couvrent
 le complément décidé par le modèle, les corpus vides et le refus des citations
-absentes. Aucun test réel des fournisseurs n'a été lancé pour cette intégration.
+absentes. Au 27 septembre 2026 : 162 tests hors ligne réussis.
+
+Vérification publique effectuée le 27 septembre 2026, sans appel IA : les trois
+ZIP Assemblée et le CSV Sénat ont été téléchargés et analysés. Le catalogue local
+`data/local/catalogue-depuis-15e-2026-09-27.json` contient 9 384 notices depuis le
+21 juin 2017 : 6 587 Assemblée et 2 797 Sénat, dont 637 dossiers Sénat avec une date de
+promulgation dans la période. La date retenue la plus récente est le 23 septembre
+2026. Les 2 927 notices de la 15e reconnues dans l’archive sont toutes conservées.
+Ce sont des notices, pas 9 384 lois distinctes. Le nombre évoluera lors des
+prochaines actualisations. La génération IA sur ces archives n'a pas été testée.

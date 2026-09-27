@@ -58,6 +58,10 @@ uniquement un rapport JSON contrôlé ou un code d'erreur public.
 Le parcours Pipelex possède quatre étapes :
 
 1. Télécharger les inventaires Sénat/Assemblée et les pages officielles (mode par défaut).
+   L'Assemblée couvre les archives des 15e, 16e et 17e législatures selon la période ;
+   le formulaire commence au 21 juin 2017, pour inclure toute la 15e législature. Trois notices par institution et par
+   collecte sont présélectionnées. Le [catalogue sans limite de résultats](../backend/data_sources/README.md)
+   s'exporte séparément sans appel IA.
 2. Faire déterminer par un LLM si des dates, statuts ou preuves manquent.
 3. Exécuter au plus une collecte complémentaire avec un autre mot-clé si le LLM le décide.
 4. Produire le rapport selon `schemas/report.schema.json` et le contrôler.
@@ -114,15 +118,17 @@ démo. Le corpus limité peut exclure des organismes ou associations pertinents.
 PYTHON_DOTENV_DISABLED=1 DO_NOT_TRACK=1 python -m pytest -q
 ```
 
-153 tests réussis : contrôles historiques, vrai moteur Pipelex avec réponses HTTP
+162 tests réussis : contrôles historiques, archives 15/16/17 et catalogue, vrai moteur Pipelex avec réponses HTTP
 simulées (avec et sans complément), refus des sources non consultées, limite
 d'appels, erreurs sans repli, absence d'appel pendant la navigation Streamlit,
 recherche sur clic et absence de répétition au rafraîchissement.
 
 Les tests du moteur bloquent les connexions réseau et emploient un identifiant
 factice. Cette suite hors ligne n'utilise pas les crédits API. Le mode web a
-fonctionné lors d'un essai utilisateur ; le nouveau parcours officiel reste
-à vérifier en réel. Les diagnostics ci-dessous documentent les corrections précédentes.
+fonctionné lors d'un essai utilisateur. Les quatre exports officiels ont été
+téléchargés le 27 septembre 2026 : 9 384 notices depuis le 21 juin 2017, incluant les 2 927 notices reconnues de la 15e, dans le catalogue local.
+La génération IA sur la couverture historique reste à vérifier en réel.
+Les diagnostics ci-dessous documentent les corrections précédentes.
 
 ## Diagnostic des échecs
 

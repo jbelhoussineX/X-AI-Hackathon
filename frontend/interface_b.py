@@ -543,11 +543,12 @@ def page_recherche(mode: str) -> None:
     else:
         st.info("Par défaut : collecte publique Sénat et Assemblée, puis deux appels OpenAI pour analyser et rédiger si des pages sont trouvées. Les crédits API sont utilisés uniquement après ton clic.")
         st.caption("Commence par un mot-clé, par exemple logement, transport ou énergie. Le repérage est lexical et sa couverture reste limitée.")
+        st.caption("Archives consultables depuis juin 2017 : Assemblée (15e à 17e législatures) et Sénat. Le rapport présente au plus quatre documents.")
     with st.form("b_search_form"):
         st.subheader("Quel sujet souhaites-tu explorer ?")
         sujet = st.text_input("Sujet de recherche", max_chars=300, placeholder="Ex. : logement", key="b_topic")
         a, b, c = st.columns([1, 1, 1])
-        debut = a.date_input("Publié à partir du", value=date(2024, 1, 1), key="b_start")
+        debut = a.date_input("Publié à partir du", value=date(2017, 6, 21), key="b_start")
         fin = b.date_input("Publié jusqu'au", value=date.today(), key="b_end")
         c.text_input("Territoire", value="France", disabled=True)
         st.caption("Première version : textes parlementaires. La période filtre la publication, pas la dernière étape de procédure. Ne saisis pas de données personnelles.")
@@ -587,7 +588,7 @@ def page_veilles(mode: str) -> None:
         with st.form("b_watch_form"):
             sujet = st.text_input("Sujet à suivre", max_chars=300, key="b_watch_topic")
             a, b = st.columns(2)
-            debut = a.date_input("Début de la période de publication", value=date(2024, 1, 1), key="b_watch_start")
+            debut = a.date_input("Début de la période de publication", value=date(2017, 6, 21), key="b_watch_start")
             fin = b.date_input("Fin de la période de publication", value=date.today(), key="b_watch_end")
             st.caption("Cette période reste fixe lors d'une actualisation manuelle. Le suivi jusqu'à la date du jour sera à définir avec A.")
             submit = st.form_submit_button("Ajouter une veille de session", type="primary")
@@ -645,7 +646,7 @@ def page_aide() -> None:
         st.write("Sauvegarde SQLite, comparaison entre actualisations et déclenchement quotidien.")
         st.caption("Une recherche consulte des sources officielles, évalue les informations manquantes et peut faire un seul complément avant de produire le rapport.")
     with st.expander("Comprendre les sources et les dates"):
-        st.write("La collecte officielle repère les dossiers selon leur dépôt initial ; le rapport contrôle ensuite la date de publication. Assemblée : 17e législature uniquement. Les extraits sont recherchés dans le texte collecté, ce qui ne valide pas leur interprétation.")
+        st.write("La collecte officielle repère les dossiers selon leur dépôt initial ; le rapport contrôle ensuite la date de publication. Assemblée : archives des 15e, 16e et 17e législatures selon la période, depuis le début de la 15e législature en juin 2017. Trois notices au plus par institution et par collecte, puis quatre documents au plus dans le rapport. Les extraits sont recherchés dans le texte collecté, ce qui ne valide pas leur interprétation.")
         st.write("Une source citée n'est pas automatiquement une source vérifiée. L'étape de procédure, le résumé et le contact peuvent avoir des preuves différentes.")
         st.write("La date d'exécution indique quand la requête s'est terminée. Elle ne prouve pas que chaque page a été revérifiée indépendamment.")
     with st.expander("Données et confidentialité"):

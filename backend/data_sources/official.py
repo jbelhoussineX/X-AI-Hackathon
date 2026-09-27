@@ -19,8 +19,10 @@ def prepare(topic: str, start: str, end: str, *, transport=None) -> dict:
     records: list[dict] = []
     limits = ['Repérage lexical sur titres/thèmes, avec filtre sur le dépôt initial, '
               'distinct de la date de publication contrôlée ensuite dans le rapport.',
-              'Couverture Sénat et notices de la 17e législature de l’Assemblée ; '
+              'Couverture Sénat et notices des 15e, 16e et 17e législatures de l’Assemblée selon la période ; '
               'aucune prétention d’exhaustivité ou de vigueur actuelle.',
+              'Au plus trois notices par institution et par collecte sont lues, '
+              'parmi les correspondances lexicales les plus récentes ; le rapport contient au plus quatre documents.',
               'L’API Légifrance/PISTE n’est pas connectée ; aucun statut de droit en vigueur n’est certifié.']
     senate_corpus: list[dict] = []
     assembly_corpus: list[dict] = []
@@ -36,7 +38,12 @@ def prepare(topic: str, start: str, end: str, *, transport=None) -> dict:
         limits.append('Source Sénat indisponible ou format non reconnu ; aucune donnée inventée en remplacement.')
     try:
         selected = assembly.inventory(topic, start, end, transport=transport)
-        datasets.append(dict(selected['dataset'], provider='assemblee', status='ok'))
+        datasets.extend(selected['datasets'])
+        for dataset in selected['datasets']:
+            if dataset['status'] != 'ok':
+                limits.append(f"Archive Assemblée {dataset['legislature']}e législature indisponible ; couverture partielle.")
+        if start < '2017-06-21':
+            limits.append('Les législatures antérieures à la 15e ne sont pas couvertes côté Assemblée (avant juin 2017).')
         records.extend(dict(r, provider='assemblee') for r in selected['records'])
         # Reuse the same bounded URL/page verifier as the existing web route.
         from backend.data_sources.pages import collect_sources
