@@ -1,7 +1,7 @@
 # Diagnostic de configuration, sans recherche web ni données personnelles.
 # `pipelex validate bundle ...` et `pipelex run bundle ... --dry-run` : sans appel IA.
 # L'exécution sans --dry-run utilise les crédits OpenAI de la clé configurée.
-domain = "verification_reperes"
+domain = "verification_sed_lex"
 main_pipe = "verifier_connexion"
 
 [pipe.verifier_connexion]

@@ -1,4 +1,4 @@
-"""Interface B de Repères citoyens — à lancer avec Streamlit.
+"""Interface B de Sed Lex — à lancer avec Streamlit.
 
 Commande : python -m streamlit run interface_b.py --server.address 127.0.0.1
 Ce fichier peut fonctionner SEUL en démonstration, sans clé, sans Dust ni Pipelex.
@@ -25,7 +25,7 @@ try:
 except ModuleNotFoundError:
     st = None  # Les tests de logique restent exécutables sans installer Streamlit.
 
-NOM_APPLICATION = "Repères citoyens"
+NOM_APPLICATION = "Sed Lex"
 SOUS_TITRE = "Des sujets qui vous concernent. Des sources pour comprendre."
 MAX_VEILLES = 12
 MAX_HISTORIQUE = 10
@@ -671,7 +671,7 @@ def main() -> None:
     st.markdown(STYLE, unsafe_allow_html=True)
     initialiser_etat(st.session_state)
     with st.sidebar:
-        st.markdown('<div class="brand">repères<br><em>citoyens.</em></div><div class="brand-tag">CHERCHER · COMPRENDRE · SUIVRE</div>', unsafe_allow_html=True)
+        st.markdown('<div class="brand">sed<br><em>lex.</em></div><div class="brand-tag">CHERCHER · COMPRENDRE · SUIVRE</div>', unsafe_allow_html=True)
         st.radio("Navigation", ["Recherche", "Mes veilles", "Aide"], key="b_page")
         st.divider()
         st.radio("Source des résultats", ["demo", "pipelex"], key="b_mode",
@@ -695,7 +695,7 @@ def main() -> None:
         page_veilles(mode)
     else:
         page_aide()
-    st.markdown('<div class="footer">REPÈRES CITOYENS · Prototype de hackathon · Informations sourcées, sans recommandation politique · Pas de veille automatique dans cette version.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="footer">SED LEX · Prototype de hackathon · Informations sourcées, sans recommandation politique · Pas de veille automatique dans cette version.</div>', unsafe_allow_html=True)
 
 
 if __name__ == "__main__":

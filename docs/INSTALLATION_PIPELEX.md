@@ -1,4 +1,4 @@
-# Installer Pipelex pour Repères citoyens
+# Installer Pipelex pour Sed Lex
 
 Ce guide prépare Pipelex sur le Mac de Maison, dans l'environnement Conda
 `xia-hackathon`, avec la clé API OpenAI de l'équipe. Le moteur Pipelex tourne

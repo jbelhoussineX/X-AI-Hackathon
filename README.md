@@ -1,4 +1,4 @@
-# Repères citoyens — socle de hackathon
+# Sed Lex — socle de hackathon
 
 ## Mise à jour locale : interface de l'équipe et Pipelex
 
@@ -105,7 +105,7 @@ jsonschema 4.26.0 et pytest 9.0.2. Streamlit doit être installé et testé chez
 
 ## 2. Configurer l'agent Dust
 
-Dans votre espace Dust, créer un agent nommé `ReperesCitoyens`.
+Dans votre espace Dust, créer un agent nommé `SedLex`.
 Coller `prompts/01_AGENT_DUST.txt` dans ses instructions. Le Sidekick de Dust peut aider,
 mais relire sa configuration ; il ne doit pas ajouter des outils externes non nécessaires.
 Activer **Web Search & Browse**. Ne pas confondre avec la recherche dans les documents internes.
@@ -123,7 +123,7 @@ La sortie est contrôlée contre `schemas/report.schema.json`. Ne pas changer un
 Copier `.env.example` vers `.env` dans VS Code. Modifier `.env` à la main :
 - DUST_API_KEY : clé de votre espace autorisé ; jamais un mot de passe ni une clé OpenAI.
 - DUST_WORKSPACE_ID : identifiant après `/w/` dans l'URL de votre espace.
-- DUST_AGENT_ID : sId de l'agent, obtenu avec le script ci-dessous ; pas `@ReperesCitoyens`.
+- DUST_AGENT_ID : sId de l'agent, obtenu avec le script ci-dessous ; pas `@SedLex`.
 
 La documentation Dust indique **Admin > API & Programmatic > API Keys > Create an API Key**
 pour les administrateurs. Si cette fonction manque, demander à l'organisateur l'accès autorisé.

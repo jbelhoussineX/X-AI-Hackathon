@@ -17,7 +17,7 @@ def collect_sources(urls: list[str], *, transport=None) -> tuple[list, dict, lis
     remaining = MAX_CORPUS_CHARS
     deadline = monotonic() + 30
     with httpx.Client(transport=transport, follow_redirects=False, trust_env=False,
-                      headers={'User-Agent': 'ReperesCitoyens-Hackathon/0.1'}) as client:
+                      headers={'User-Agent': 'SedLex-Hackathon/0.1'}) as client:
         for url in urls[:MAX_SOURCES]:
             if url in seen:
                 continue

@@ -111,7 +111,7 @@ def test_http_call_and_contract(report):
         # Champs attendus par UserMessageContextSchema dans le SDK public Dust.
         # L'identité de l'application suffit ; aucune identité personnelle n'est envoyée.
         assert req.call_args.kwargs['json']['message']['context'] == {
-            'username': 'reperes-citoyens', 'timezone': 'Europe/Paris', 'origin': 'api',
+            'username': 'sed-lex', 'timezone': 'Europe/Paris', 'origin': 'api',
         }
         assert req.call_args.kwargs['allow_redirects'] is False
         assert req.call_count == 1

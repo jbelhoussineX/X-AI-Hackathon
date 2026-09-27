@@ -1,7 +1,7 @@
 # Instructions communes aux assistants de code
 
 ## Produit
-Prototype local « Repères citoyens », hackathon X-IA. Recherche documentaire France.
+Prototype local « Sed Lex », hackathon X-IA. Recherche documentaire France.
 L'utilisateur choisit un sujet et une période ; textes parlementaires + statut + contacts.
 Aucun score, classement de responsables politiques, recommandation électorale, profil politique ou envoi de message.
 

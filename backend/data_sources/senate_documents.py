@@ -96,7 +96,7 @@ Repeated URLs reuse the same fetch. PDF page boundaries remain intact.
 
     cache_times: dict[str, str] = {}
     with httpx.Client(transport=transport, follow_redirects=False, trust_env=False,
-                      headers={'User-Agent': 'ReperesCitoyens-Hackathon/0.1'}) as client:
+                      headers={'User-Agent': 'SedLex-Hackathon/0.1'}) as client:
         def get(url):
             if url not in cache:
                 cache[url] = fetch_text(client, url, deadline)
