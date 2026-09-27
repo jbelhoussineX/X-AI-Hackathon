@@ -27,14 +27,20 @@ peut être exporté sans IA ; le rapport reste limité à quatre documents.
 Le repérage filtre le dépôt initial ; le rapport filtre ensuite la publication.
 Cette différence et les limites de couverture sont signalées à l'utilisateur.
 Les citations du rapport sont contrôlées contre le corpus effectivement collecté.
+En mode officiel, le modèle choisit des passages numérotés ; Python insère leur
+texte et leur URL depuis le corpus, sans laisser le modèle réécrire les citations.
+La vérification finale reste active, sans appel IA supplémentaire.
 Leur présence ne certifie pas l'interprétation ni l'actualité juridique.
 
 L'ancien parcours reste disponible avec `POLITICAL_DATA_SOURCE=web` (3 à 4 appels
 et outil web payant). Aucun repli automatique vers ce mode n'est effectué.
 Les corrections du rapport et les plafonds de quatre documents/trois interlocuteurs
 restent actifs. Une page de contact sans preuve dédiée est omise avec une explication.
+Un interlocuteur dont les références sont vides ou absentes des documents retenus
+est entièrement omis avec une limite explicite ; aucun rattachement n'est deviné.
+Les documents et les autres interlocuteurs restent soumis à tous les contrôles.
 
-**Validation : 162 tests hors ligne réussis**, dont les collecteurs importés de
+**Validation : 179 tests hors ligne réussis**, dont les collecteurs importés de
 l'équipe, les parcours Pipelex officiel et web et l'interface Streamlit.
 Le 27 septembre 2026, les trois archives Assemblée et l'export Sénat ont été
 téléchargés sans appel IA : 9 384 notices retenues depuis le 21 juin 2017 (6 587 Assemblée,

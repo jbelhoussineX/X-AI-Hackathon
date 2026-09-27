@@ -11,6 +11,7 @@ from openai import AsyncOpenAI
 
 from src.contracts import ROOT
 from src.openai_research import Run, ResearchFailure
+from src.source_passages import passages_from_corpus, resolve_passages
 from test_pipelex import wire_response
 
 URL = 'https://www.senat.fr/leg/ppl25-1.html'
@@ -46,17 +47,26 @@ def fixture_data(empty=False):
 def test_real_local_graph_collects_official_sources_without_web_inference(monkeypatch, followup, empty):
     from src.pipelex_worker import execute
     report, prepared = fixture_data(empty)
+    draft = deepcopy(report)
+    for item in draft['documents'] + draft['contacts']:
+        item['evidence'] = [{'purpose': proof['purpose'], 'passage_id': 'p0001'} for proof in item['evidence']]
+    expected = resolve_passages(draft, passages_from_corpus(prepared['corpus'])) if not empty else None
     collect = Mock(side_effect=lambda *args: deepcopy(prepared))
     monkeypatch.setattr('backend.data_sources.official.prepare', collect)
     responses = [wire_response(json.dumps({'needs_more': followup,
                  'followup_query': 'habitat' if followup else None, 'limitations': []})),
-                 wire_response(json.dumps(report))]
+                 wire_response(json.dumps(draft))]
     calls = []
     def handler(request):
         body = json.loads(request.content)
         calls.append(body)
         assert body['model'] == 'gpt-4o-mini'
         assert 'tools' not in body
+        if 'documents' in body['text']['format']['schema']['properties']:
+            from jsonschema import Draft202012Validator
+            Draft202012Validator(body['text']['format']['schema']).validate(draft)
+            assert '"passages"' in body['input']
+            assert prepared['corpus'][0]['text'] in body['input']
         return httpx2.Response(200, json=responses.pop(0), request=request)
     def client():
         return AsyncOpenAI(api_key='offline-test-placeholder', max_retries=0,
@@ -69,13 +79,14 @@ def test_real_local_graph_collects_official_sources_without_web_inference(monkey
         assert output['documents'] == []
         assert any('Aucun résultat trouvé dans le corpus consulté' in s for s in output['limitations'])
     else:
-        assert output['documents'] == report['documents']
+        assert output['documents'] == expected['documents']
+        assert output['contacts'] == expected['contacts']
         assert any('extraits retrouvés' in s for s in output['limitations'])
         if followup:
             assert collect.call_args.args == ('habitat', '2024-01-01', '2026-09-27')
 
 
-def test_invented_excerpt_refused_even_for_collected_url(monkeypatch):
+def test_model_written_excerpt_refused_even_for_collected_url(monkeypatch):
     from types import SimpleNamespace
     report, prepared = fixture_data()
     report['documents'][0]['evidence'][0]['excerpt'] = 'Citation absente du corpus.'
@@ -85,7 +96,7 @@ def test_invented_excerpt_refused_even_for_collected_url(monkeypatch):
     monkeypatch.setattr(run, 'call', fake)
     with pytest.raises(ResearchFailure) as caught:
         asyncio.run(run.finish())
-    assert caught.value.reason == 'excerpt_not_found'
+    assert caught.value.reason == 'invalid_evidence_selection'
 
 
 def test_unknown_source_never_falls_back_to_paid_web():

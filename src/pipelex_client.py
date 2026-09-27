@@ -32,6 +32,7 @@ ERRORS = {
 # Fixed vocabulary only: never forward raw API messages, headers, request bodies
 # or arbitrary field names. These details also survive Pipelex's exception wrappers.
 VALIDATION_REASONS = {
+    'invalid_evidence_selection': 'Le rapport ne sélectionne pas correctement les passages du corpus officiel.',
     'excerpt_not_found': 'Un extrait du rapport est absent du texte officiel effectivement collecté.',
     'report_contract': 'Une règle de validation du rapport a échoué.',
     'report_schema': 'La structure JSON ne correspond pas au schéma du rapport.',
