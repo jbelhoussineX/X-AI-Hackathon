@@ -117,7 +117,14 @@ La structure, les dates, les relations entre identifiants et la présence des UR
 de preuve dans les sources renvoyées par l'outil sont contrôlées. Une date connue
 hors période entraîne le refus du rapport ; une date inconnue est signalée.
 En mode officiel, chaque extrait est recherché dans le texte collecté, sans
-nouveau téléchargement lors de la vérification. En mode web, une URL présente dans la trace de recherche n'atteste ni de l'exactitude d'une
+nouveau téléchargement lors de la vérification. Pour éviter les erreurs de recopie,
+la rédaction sélectionne des identifiants de passages préparés localement (600
+caractères au plus, une seule page PDF). Python reconstruit les preuves avec les
+extraits, URL et localisations du corpus. Le schéma intermédiaire de génération
+est interne ; le contrat public du rapport ne change pas. Les identifiants inconnus,
+citations ajoutées et URL ajoutées dans les preuves sont refusés. Aucun appel IA
+supplémentaire. La pertinence d'un passage pour le fait allégué reste à contrôler.
+En mode web, une URL présente dans la trace de recherche n'atteste ni de l'exactitude d'une
 affirmation, ni de la fidélité mot à mot d'un extrait. Relire les pages avant la
 démo. Le corpus limité peut exclure des organismes ou associations pertinents.
 
@@ -127,7 +134,7 @@ démo. Le corpus limité peut exclure des organismes ou associations pertinents.
 PYTHON_DOTENV_DISABLED=1 DO_NOT_TRACK=1 python -m pytest -q
 ```
 
-162 tests réussis : contrôles historiques, archives 15/16/17 et catalogue, vrai moteur Pipelex avec réponses HTTP
+179 tests réussis : contrôles historiques, archives 15/16/17 et catalogue, sélection des passages et refus des citations réécrites, vrai moteur Pipelex avec réponses HTTP
 simulées (avec et sans complément), refus des sources non consultées, limite
 d'appels, erreurs sans repli, absence d'appel pendant la navigation Streamlit,
 recherche sur clic et absence de répétition au rafraîchissement.
@@ -140,6 +147,19 @@ La génération IA sur la couverture historique reste à vérifier en réel.
 Les diagnostics ci-dessous documentent les corrections précédentes.
 
 ## Diagnostic des échecs
+
+### Interlocuteur sans document présent
+
+Lors de la préparation du rapport, un interlocuteur dont `document_ids` est vide
+ou contient un identifiant absent de `documents` est omis entièrement. Même si une
+partie des références existe, aucun lien n'est deviné ou corrigé par rapprochement
+de titre, de source ou d'identifiant de passage. Une limite explicite explique
+l'omission. Les documents et les autres interlocuteurs sont conservés sous réserve
+de leurs validations normales ; le validateur partagé continue de refuser toute
+référence invalide. Les plafonds sont vérifiés avant cette préparation. Aucun appel
+IA supplémentaire ni reprise automatique. Tests hors ligne : références vides,
+inconnues, mixtes, identifiants de passage, rapport sans document et conservation
+des erreurs de date, preuve manquante, doublon ou plafond dépassé.
 
 Un échec affiche maintenant un code contrôlé et, lorsqu'ils sont disponibles,
 l'étape, le statut HTTP, le type d'erreur, le code API et le paramètre concerné.
@@ -239,7 +259,7 @@ Le travail de collecte directe de l'équipe est maintenant intégré : voir
 
 ### Page de contact sans preuve dédiée
 
-Après contrôle de la structure JSON, la préparation du rapport remplace uniquement
+Pour un interlocuteur dont les références documentaires sont valides, la préparation remplace
 une URL HTTPS publique de contact sans preuve `contact` portant exactement sur
 cette URL par `null`. Elle ajoute une limite explicite identifiant le numéro de
 l'interlocuteur. Le document, l'interlocuteur, ses références et ses preuves ne

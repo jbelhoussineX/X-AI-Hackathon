@@ -70,6 +70,11 @@ Il n'y a pas de synchronisation quotidienne.
 - Les citations sont recherchées dans le texte effectivement transmis, en
   normalisant uniquement espaces et composition Unicode. Cela ne valide pas
   leur interprétation, la date ou l'actualité juridique.
+- Pour la rédaction, ce texte est découpé localement en passages de 600 caractères
+  au plus, sans franchir les pages PDF. Le modèle sélectionne leurs identifiants ;
+  Python fournit les extraits, URL et numéros de page au rapport public habituel.
+  Un identifiant inconnu ou un extrait rédigé par le modèle est refusé. Le contrôle
+  final des sources reste actif. Aucun appel IA de correction ni relance automatique.
 - Légifrance/PISTE n'est pas connecté. Aucune clé Assemblée/Sénat n'est attendue.
 
 Sources officielles des exports :
@@ -87,7 +92,8 @@ Les tests importés de l'équipe couvrent les archives, CSV, dates, limites et l
 Les tests d'intégration utilisent le moteur Pipelex réel et les deux transports
 HTTP simulés (`httpx` pour les données, `httpx2` pour le SDK OpenAI). Ils couvrent
 le complément décidé par le modèle, les corpus vides et le refus des citations
-absentes. Au 27 septembre 2026 : 162 tests hors ligne réussis.
+absentes. Au 27 septembre 2026 : 179 tests hors ligne réussis, avec sélection de
+passages, conservation du texte PDF et refus des citations ou URL injectées.
 
 Vérification publique effectuée le 27 septembre 2026, sans appel IA : les trois
 ZIP Assemblée et le CSV Sénat ont été téléchargés et analysés. Le catalogue local

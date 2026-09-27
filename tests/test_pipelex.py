@@ -304,7 +304,7 @@ def test_worker_diagnostic_is_filtered_again_before_display(monkeypatch):
 
 
 @pytest.mark.parametrize('reason', [
-    'invalid_date', 'invalid_stage_evidence', 'contact_document_reference',
+    'invalid_date', 'invalid_stage_evidence',
     'publication_outside_period', 'document_kind', 'report_schema', 'invalid_json',
     'max_output_tokens', 'content_filter', 'response_refusal', 'empty_response', 'empty_field', 'item_limit',
 ])
@@ -320,8 +320,6 @@ def test_final_failure_reaches_ui_without_raw_content_or_retry(monkeypatch, repo
     elif reason == 'invalid_stage_evidence':
         document['stage'] = 'SECRET_STAGE'
         document['evidence'] = [e for e in document['evidence'] if e['purpose'] != 'statut']
-    elif reason == 'contact_document_reference':
-        report['contacts'][0]['document_ids'] = ['SECRET_UNKNOWN_DOCUMENT']
     elif reason == 'publication_outside_period':
         document['publication_date'] = '2020-01-01'
     elif reason == 'document_kind':

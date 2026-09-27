@@ -59,13 +59,26 @@ def report_response_schema() -> dict:
 
 
 def prepare_report(report: dict) -> dict:
-    """Omit an unsupported optional contact link, explicitly, before strict validation."""
+    """Omit unsupported contacts/links explicitly, then enforce the shared contract."""
     from jsonschema import Draft202012Validator
     if not Draft202012Validator(SCHEMA).is_valid(report):
         # Preserve the normal safe schema error; do not repair malformed structures.
         return validate_report(report)
+    if any(len(report[group]) > limit for group, limit in REPORT_ITEM_LIMITS.items()):
+        # Omitting an orphan must not conceal a report that exceeded the agreed caps.
+        return validate_report(report)
     prepared = deepcopy(report)
+    document_ids = {document['id'] for document in prepared['documents']}
+    contacts = []
     for index, contact in enumerate(prepared['contacts'], start=1):
+        if not contact['document_ids'] or not set(contact['document_ids']).issubset(document_ids):
+            prepared['limitations'].append(
+                f'Interlocuteur n°{index} non affiché : sa liste de références est vide '
+                'ou contient un identifiant absent des documents retenus. '
+                'Aucun rattachement à un document n’a été déduit ou inventé.'
+            )
+            continue
+        contacts.append(contact)
         url = contact['contact_url']
         if url is not None and public_url(url) and not any(
                 proof['purpose'] == 'contact' and proof['url'] == url
@@ -76,6 +89,7 @@ def prepare_report(report: dict) -> dict:
                 'aucune preuve dédiée ne porte exactement sur cette URL. '
                 'Coordonnées de contact non établies dans le corpus consulté.'
             )
+    prepared['contacts'] = contacts
     # Still require document evidence, contact relationships and every other rule.
     return validate_report(prepared)
 
@@ -265,6 +279,10 @@ class Run:
             'Si le corpus contient davantage de résultats, sélectionne les éléments étayés liés au sujet '
             'dans ces limites et signale la sélection partielle dans limitations, sans classement politique. '
             'Choisis des identifiants de documents uniques et réutilise-les exactement dans document_ids. '
+            'document_ids doit être non vide et ne contenir que des valeurs id présentes dans documents. '
+            'Les passage_id sont des identifiants de preuves : ne les utilise jamais comme document_ids. '
+            'Ne remplace pas un id par un titre, une URL ou un identifiant du catalogue. '
+            'Si tu ne peux pas rattacher un interlocuteur aux documents retenus, omets-le et explique la limite. '
             'topic reprend le sujet fourni ; scope décrit France, la période et le corpus officiel consulté. '
             'id, title, summary, name, role et relation doivent contenir du texte étayé non vide. '
             'Si un titre ou résumé manque, omets le document ; si le nom, rôle ou lien documenté '
@@ -287,11 +305,40 @@ class Run:
             'pour contourner ce filtre. Si aucun document ne convient, renvoie documents et contacts '
             'vides avec une explication dans limitations. Reste concis pour produire le JSON complet.\n'
             + json.dumps({'sujet': self.topic, 'debut_publication': self.start,
-                          'fin_publication': self.end}, ensure_ascii=False) + '\n' + self.corpus()
+                          'fin_publication': self.end}, ensure_ascii=False) + '\n'
         )
-        response = await self.call(prompt=prompt, schema=report_response_schema())
+        schema = report_response_schema()
+        passages = None
+        if self.data_source == 'official' and self.prepared is not None:
+            from src.source_passages import passages_from_corpus, selection_schema
+            passages = passages_from_corpus(self.prepared['corpus'])
+            if not passages:
+                raise ResearchFailure('sources')
+            schema = selection_schema(schema, passages)
+            prompt += (
+                'Pour chaque preuve evidence, fournis uniquement purpose et passage_id. '
+                'Choisis un identifiant dans passages dont le texte justifie effectivement le fait '
+                '(contenu, statut, relation ou contact). Python recopiera son extrait, son URL et '
+                'sa localisation à l’identique : ne rédige ni citation ni URL dans evidence. '
+                'Plusieurs passages peuvent être cités séparément si nécessaire. '
+                'Un passage existant ne justifie pas tous les faits : omets tout fait non étayé. '
+                'N’utilise jamais un titre du catalogue, une limitation ou une reformulation comme preuve. '
+                'contact_url doit correspondre à l’URL du passage choisi pour la preuve contact, sinon null.\n'
+                + json.dumps({'passages': passages, 'source_urls': sorted(self.source_urls),
+                              'limitations': [*self.prepared['limitations'], *self.limitations]}, ensure_ascii=False)
+            )
+        else:
+            prompt += self.corpus()
+        response = await self.call(prompt=prompt, schema=schema)
         try:
-            report = prepare_report(json.loads(response.output_text))
+            draft = json.loads(response.output_text)
+            if passages is not None:
+                from jsonschema import Draft202012Validator
+                from src.source_passages import resolve_passages
+                if not Draft202012Validator(schema).is_valid(draft):
+                    raise ResearchFailure('format', reason='invalid_evidence_selection')
+                draft = resolve_passages(draft, passages)
+            report = prepare_report(draft)
         except ReportError as exc:
             raise ResearchFailure('format', reason=exc.reason, field=exc.field) from exc
         except (ValueError, TypeError):
