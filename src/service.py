@@ -8,7 +8,8 @@ from backend.pipelex_research import research
 import time
 from src.contracts import ROOT, ReportError, validate_report
 from src.dust_client import run_dust
-from src.pipelex_client import run_pipelex
+from src.pipelex_client import PipelexError, run_pipelex
+from pipelex_sdk.errors import ApiUnreachableError
 
 def search(topic: str, start: str, end: str, mode: str = 'demo') -> dict:
     if not isinstance(topic, str):
@@ -33,7 +34,21 @@ def search(topic: str, start: str, end: str, mode: str = 'demo') -> dict:
         require_enabled('PIPELEX')
         engine = os.environ.get('PIPELEX_EXECUTION_MODE', 'hosted')
         if engine == 'hosted':
-            report, checks = _hosted(topic, start, end)
+            try:
+                report, checks = _hosted(topic, start, end)
+            except ApiUnreachableError as exc:
+                # Only classify known transport codes; never expose SDK text, URLs or headers.
+                if exc.code == 'ABORT_TIMEOUT':
+                    reason = 'Pipelex n’a pas répondu dans le délai prévu.'
+                elif exc.code == 'ConnectError':
+                    reason = 'La connexion sécurisée au serveur Pipelex a échoué.'
+                else:
+                    reason = 'La communication avec le serveur Pipelex a été interrompue.'
+                raise PipelexError(
+                    reason + ' Aucun résultat n’a pu être récupéré. Une génération peut toutefois '
+                    'avoir démarré : vérifie les exécutions dans Pipelex avant de relancer. '
+                    'Aucune relance automatique n’a été effectuée.'
+                ) from None
         elif engine == 'local':
             report, conversation_id = run_pipelex(topic, start, end)
         else:
