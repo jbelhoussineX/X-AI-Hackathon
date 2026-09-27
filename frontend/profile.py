@@ -4,12 +4,13 @@ Only Streamlit's server-side OIDC user supplies identity. Forms and URL paramete
 never supply an owner, token or email. Anonymous searches remain available.
 """
 import json
+from html import escape
 from pathlib import Path
 import sqlite3
 
 import streamlit as st
 
-from backend.profiles import Identity, ProfileError, ProfileStore, identity_from_claims
+from backend.profiles import Identity, ProfileError, ProfileStore, identity_from_claims, QUESTIONNAIRE, NO_ANSWER
 
 PROFILE_PATH = Path(__file__).resolve().parents[1] / 'data/local/profiles.sqlite3'
 _CLAIMS = ('iss', 'sub', 'email', 'email_verified', 'name')
@@ -68,11 +69,17 @@ def logout() -> None:
 
 
 def sidebar_account(identity: Identity | None, error: str | None) -> None:
-    st.caption('MON COMPTE')
+    st.caption('MON COMPTE' if identity else 'MODE INVITÉ')
     if error:
         st.warning(error)
     if identity:
-        st.text(identity.name or identity.email)
+        name = identity.name or identity.email
+        if st.session_state.get('_profile_deleted_for') != identity.user_id:
+            try:
+                name = ProfileStore(PROFILE_PATH).get_or_create(identity)['display_name']
+            except (OSError, ProfileError):
+                pass
+        st.markdown(f'<div style="color:#FFFFFF;font-weight:600;overflow-wrap:anywhere">{escape(name)}</div>', unsafe_allow_html=True)
         if st.button('Se déconnecter', key='profile_logout'):
             logout()
     elif error:
@@ -97,41 +104,50 @@ def prepare_topic(topic: str, months: int) -> None:
 
 def render_profile(identity: Identity | None, error: str | None) -> None:
     st.title('Mon profil')
-    st.write('Retrouve tes sujets et choisis ta période de recherche habituelle.')
     if not identity:
         if error:
             st.warning(error)
         else:
-            st.info('Connecte-toi avec Google depuis le menu pour enregistrer ton profil.')
-        st.caption('Google partage ton identité de base : nom et adresse vérifiée. '
-                   'Sed Lex ne demande aucun accès à tes emails ou fichiers Google. '
-                   'La recherche reste accessible sans compte.')
-        return
-    if st.session_state.get('_profile_deleted_for') == identity.user_id:
+            st.info('Mode invité : profil, historique et favoris disponibles dans cette session. La connexion est facultative pour les conserver sur un compte.')
+    if identity and st.session_state.get('_profile_deleted_for') == identity.user_id:
         st.success('Ton profil enregistré a été supprimé. Reconnecte-toi pour en créer un nouveau.')
         return
     try:
-        store = ProfileStore(PROFILE_PATH)
+        if identity:
+            store = ProfileStore(PROFILE_PATH)
+        else:
+            from frontend.guest import GuestStore
+            store = GuestStore(st.session_state)
         profile = store.get_or_create(identity)
+        answers = store.answers(identity)
     except (OSError, sqlite3.Error, ProfileError):
         st.error('Ton profil enregistré est momentanément inaccessible. Tu peux continuer à rechercher.')
         return
-    st.text('Compte Google : ' + profile['email'])
-    st.caption('L’adresse est fournie par Google et ne se modifie pas dans Sed Lex.')
+    if identity:
+        st.text('Compte Google : ' + profile['email'])
     with st.form('profile_form'):
         display_name = st.text_input('Nom d’affichage', value=profile['display_name'],
                                      max_chars=100, key='profile_display_name')
-        topics_text = st.text_area('Mes sujets', value='\n'.join(profile['topics']),
-                                   max_chars=807, key='profile_topics',
-                                   help='Un sujet par ligne, 8 sujets maximum et 100 caractères par sujet.')
+        st.caption('Questionnaire facultatif. Les réponses ne sont pas envoyées à l’IA.')
+        selections = {}
+        left, right = st.columns(2)
+        for index, (key, (label, choices)) in enumerate(QUESTIONNAIRE.items()):
+            options = [NO_ANSWER, *choices]
+            value = answers.get(key, NO_ANSWER)
+            selections[key] = (left if index % 2 == 0 else right).selectbox(
+                label, options, index=options.index(value) if value in options else 0, key='profile_answer_' + key)
+        topics = st.multiselect('Sujets à suivre',
+            list(dict.fromkeys(['logement', 'transports', 'énergie', 'emploi', 'éducation', 'environnement', 'santé', 'animaux', *profile['topics']])),
+            default=profile['topics'], max_selections=8, key='profile_topics')
         months = st.number_input('Période des actualités (mois)', min_value=1, max_value=12,
                                  value=profile['recent_months'], step=1, key='profile_months')
         save = st.form_submit_button('Enregistrer mon profil', type='primary')
     if save:
         try:
             profile = store.update(identity, display_name=display_name,
-                                   topics=[line.strip() for line in topics_text.splitlines() if line.strip()],
+                                   topics=topics,
                                    recent_months=months)
+            store.save_answers(identity, selections)
             st.success('Profil enregistré. Aucune recherche n’a été lancée.')
         except ProfileError as exc:
             st.error(str(exc))
@@ -146,14 +162,15 @@ def render_profile(identity: Identity | None, error: str | None) -> None:
                 if st.button('Préparer la recherche', key=f'profile_search_{index}'):
                     prepare_topic(topic, profile['recent_months'])
                     st.rerun()
-    st.caption('Le profil est enregistré sur le serveur Sed Lex. Les sujets sont ceux que tu choisis ; '
+    st.caption(('Le profil est enregistré sur le serveur Sed Lex. ' if identity else 'Le profil reste dans cette session invitée. ') + 'Les sujets sont ceux que tu choisis ; '
                'aucune opinion politique n’est déduite. Ton identité Google n’est pas transmise au modèle IA. '
-               'Les résultats restent limités à la session.')
+               + ('Les recherches sont conservées sept jours ; les favoris restent enregistrés jusqu’à leur retrait.' if identity else 'Une fermeture ou réinitialisation de session peut effacer ces données.'))
     export = {key: profile[key] for key in ('display_name', 'email', 'topics', 'recent_months')}
+    export['questionnaire'] = store.answers(identity)
     st.download_button('Exporter mon profil', json.dumps(export, ensure_ascii=False, indent=2),
                        file_name='profil_sed_lex.json', mime='application/json', on_click='ignore')
     with st.expander('Supprimer mon profil enregistré'):
-        st.write('Supprime le nom d’affichage et les préférences enregistrés dans Sed Lex, puis déconnecte ce compte. '
+        st.write('Supprime le profil, le questionnaire, l’historique et les favoris dans Sed Lex, puis déconnecte ce compte. '
                  'Ton compte Google reste intact. Une prochaine connexion pourra créer un nouveau profil vide.')
         confirmed = st.checkbox('Je confirme la suppression de mon profil Sed Lex', key='profile_delete_confirm')
         if st.button('Supprimer mon profil', disabled=not confirmed, key='profile_delete'):
@@ -162,5 +179,9 @@ def render_profile(identity: Identity | None, error: str | None) -> None:
             except (OSError, sqlite3.Error, ProfileError):
                 st.error('Suppression impossible pour le moment. Réessaie plus tard.')
                 return
-            st.session_state['_profile_deleted_for'] = identity.user_id
-            logout()
+            if identity:
+                st.session_state['_profile_deleted_for'] = identity.user_id
+                logout()
+            else:
+                clear_personal_session(st.session_state)
+                st.rerun()

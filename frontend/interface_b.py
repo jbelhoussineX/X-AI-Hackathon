@@ -690,14 +690,14 @@ def main() -> None:
     from frontend.profile import initialize_identity, sidebar_account, render_profile
     identity, identity_error = initialize_identity()
     initialiser_etat(st.session_state)
-    if st.session_state["b_page"] not in ("Recherche", "Mon profil", "Aide"):
+    if st.session_state["b_page"] not in ("Recherche", "Historique", "Favoris", "Mon profil", "Aide"):
         st.session_state["b_page"] = "Recherche"
     with st.sidebar:
         st.markdown('<div class="brand">sed <em>lex.</em></div>', unsafe_allow_html=True)
         st.divider()
         sidebar_account(identity, identity_error)
         st.divider()
-        st.radio("Navigation", ["Recherche", "Mon profil", "Aide"], key="b_page", label_visibility="collapsed")
+        st.radio("Navigation", ["Recherche", "Historique", "Favoris", "Mon profil", "Aide"], key="b_page", label_visibility="collapsed")
         st.divider()
         st.radio("Synthèse IA", ["demo", "pipelex"], key="b_mode",
                  format_func=lambda x: "Sans synthèse" if x == "demo" else "Avec synthèse")
@@ -713,6 +713,9 @@ def main() -> None:
         page_recherche(mode)
     elif page == "Mon profil":
         render_profile(identity, identity_error)
+    elif page in ("Historique", "Favoris"):
+        from frontend.library import render_library
+        render_library(identity, 'history' if page == 'Historique' else 'favorite')
     else:
         page_aide()
     st.caption("Sed Lex · Sources officielles · Recherche à la demande")

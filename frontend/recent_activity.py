@@ -32,6 +32,7 @@ def render(*, allow_ai=False):
             unit = units.selectbox('Unité de la période', ['mois', 'jours'], key='recent_unit')
             submitted = st.form_submit_button('Rechercher', type='primary', width='stretch')
         if submitted:
+            st.session_state.pop('recent_from_history', None)
             st.session_state.pop('recent_categories', None)
             st.session_state.pop('recent_result', None)
             st.session_state.pop('recent_brief', None)
@@ -40,6 +41,8 @@ def render(*, allow_ai=False):
                 with st.spinner('Consultation des inventaires et flux officiels…'):
                     st.session_state['recent_result'] = (search_recent(topic, months=int(amount))
                                                        if unit == 'mois' else search_recent(topic, int(amount)))
+                from frontend.library import remember
+                remember(st.session_state['recent_result'])
             except ValueError:
                 st.error('Indique un sujet de 3 à 300 caractères et une durée de 1 à 12 mois ou de 1 à 90 jours.')
         result = st.session_state.get('recent_result')
@@ -47,6 +50,8 @@ def render(*, allow_ai=False):
             return
         st.divider()
         st.subheader('Consulter les résultats')
+        if st.session_state.get('recent_from_history'):
+            st.info('Recherche enregistrée : les données datent de cette collecte. Cliquez sur Rechercher pour les actualiser avant une nouvelle synthèse.')
         st.text(result['topic'])
         st.caption(f"Du {date_label(result['start'])} au {date_label(result['end'])} inclus · "
                    'Résultats de la dernière recherche validée')
@@ -113,7 +118,7 @@ def render(*, allow_ai=False):
         events = [event for event in result['events'] if not selected or event.get('category', 'procedure') in selected]
         events = sorted(events, key=lambda event: event['event_date'], reverse=order == 'Plus récents d’abord')
         st.caption(f"{len(events)} événement(s) affiché(s) sur {len(result['events'])}. Filtres sans nouvel appel réseau ou IA.")
-        for event in events:
+        for index, event in enumerate(events):
             with st.container(border=True):
                 st.caption(f"{date_label(event['event_date'])} · {CATEGORIES.get(event.get('category', 'procedure'), 'Publication officielle')}")
                 st.markdown(f'<div class="doc-title">{escape(event["title"])}</div>', unsafe_allow_html=True)
@@ -121,6 +126,8 @@ def render(*, allow_ai=False):
                 if event['decision']:
                     st.text('Décision indiquée dans cet acte : ' + event['decision'])
                 st.link_button('Lire la source officielle', event['dossier_url'])
+                from frontend.library import favorite_button
+                favorite_button(event, key=f'recent_favorite_{index}')
                 with st.expander('Détails et provenance'):
                     if event.get('description'):
                         st.text(event['description'])

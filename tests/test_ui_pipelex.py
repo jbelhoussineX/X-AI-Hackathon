@@ -23,7 +23,7 @@ def test_app_navigation_and_demo_never_call_service(monkeypatch):
     assert not app.tabs
     assert [field.key for field in app.text_input] == ['recent_topic']
     assert not any(heading.value.startswith('1.') for heading in app.subheader)
-    assert app.radio(key='b_page').options == ['Recherche', 'Mon profil', 'Aide']
+    assert app.radio(key='b_page').options == ['Recherche', 'Historique', 'Favoris', 'Mon profil', 'Aide']
     app.radio(key='b_page').set_value('Mon profil').run()
     assert not app.exception
     assert any('Connecte-toi avec Google' in message.value for message in app.info)

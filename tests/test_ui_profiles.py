@@ -37,9 +37,9 @@ def app_for(monkeypatch, who=None):
 
 def test_anonymous_profile_does_not_create_a_database(monkeypatch):
     app = app_for(monkeypatch)
-    assert 'Connecte-toi avec Google' in app.info[0].value
+    assert 'Mode invité' in app.info[0].value
     assert not ui.PROFILE_PATH.exists()
-    assert not any(button.label == 'Enregistrer mon profil' for button in app.button)
+    assert any(button.label == 'Enregistrer mon profil' for button in app.button)
 
 
 def test_login_only_starts_on_click_and_errors_do_not_expose_secrets(monkeypatch):
@@ -59,7 +59,7 @@ def test_profile_persists_between_sessions_and_prefills_only_after_click(monkeyp
     alice = identity()
     app = app_for(monkeypatch, alice)
     app.text_input(key='profile_display_name').set_value('Alice citoyenne')
-    app.text_area(key='profile_topics').set_value('logement\ntransports')
+    app.multiselect(key='profile_topics').set_value(['logement', 'transports'])
     app.number_input(key='profile_months').set_value(2)
     next(button for button in app.button if button.label == 'Enregistrer mon profil').click().run()
     assert not app.exception
@@ -68,7 +68,7 @@ def test_profile_persists_between_sessions_and_prefills_only_after_click(monkeyp
     assert saved['topics'] == ['logement', 'transports']
     again = app_for(monkeypatch, alice)
     assert again.text_input(key='profile_display_name').value == 'Alice citoyenne'
-    assert again.text_area(key='profile_topics').value == 'logement\ntransports'
+    assert again.multiselect(key='profile_topics').value == ['logement', 'transports']
     again.button(key='profile_search_0').click().run()
     assert not again.exception
     assert again.session_state['b_page'] == 'Recherche'
@@ -125,7 +125,7 @@ def test_profile_topic_clears_previous_results_filters_and_ai_consent(monkeypatc
 def test_switching_accounts_clears_results_forms_and_paid_consent(monkeypatch):
     alice, bob = identity(), identity('bob')
     app = app_for(monkeypatch, alice)
-    app.text_area(key='profile_topics').set_value('sujet privé alice')
+    app.multiselect(key='profile_topics').set_value(['logement'])
     next(button for button in app.button if button.label == 'Enregistrer mon profil').click().run()
     app.session_state['b_history'] = [{'private': 'alice'}]
     app.session_state['b_watches'] = [{'private': 'alice'}]
@@ -142,8 +142,8 @@ def test_switching_accounts_clears_results_forms_and_paid_consent(monkeypatch):
     app.radio(key='b_page').set_value('Mon profil').run()
     assert not app.exception
     assert app.text_input(key='profile_display_name').value == 'Bob'
-    assert app.text_area(key='profile_topics').value == ''
-    assert ProfileStore(ui.PROFILE_PATH).get_or_create(alice)['topics'] == ['sujet privé alice']
+    assert app.multiselect(key='profile_topics').value == []
+    assert ProfileStore(ui.PROFILE_PATH).get_or_create(alice)['topics'] == ['logement']
 
 
 def test_delete_needs_confirmation_and_does_not_delete_another_profile(monkeypatch):

@@ -1,6 +1,7 @@
 """Offline identity boundaries, private profile storage, and account isolation."""
 
 import sqlite3
+import os
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import FrozenInstanceError
 
@@ -81,7 +82,9 @@ def test_new_profile_has_no_inferred_interests_and_survives_restart(store):
     assert profile["display_name"] == "Alice"
     assert profile["created_at"] == profile["updated_at"]
     assert ProfileStore(store.path).get_or_create(alice) == profile
-    assert store.path.stat().st_mode & 0o777 == 0o600
+    if os.name == 'posix':
+        assert store.path.stat().st_mode & 0o777 == 0o600
+    # Windows uses inherited ACLs; POSIX mode bits do not describe its permissions.
 
 
 def test_two_accounts_are_isolated_and_deletion_does_not_affect_other(store):

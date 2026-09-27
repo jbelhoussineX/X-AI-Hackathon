@@ -14,7 +14,8 @@ import sqlite3
 from collections.abc import Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+from uuid import uuid4
 from pathlib import Path
 
 
@@ -22,6 +23,16 @@ GOOGLE_ISSUER = "https://accounts.google.com"
 _CONTROL = re.compile(r"[\x00-\x1f\x7f]")
 _EMAIL = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+\Z")
 _USER_ID = re.compile(r"[a-f0-9]{64}\Z")
+
+QUESTIONNAIRE = {
+    'genre': ('Genre', ['Femme', 'Homme', 'Autre']),
+    'couple': ('Situation conjugale', ['Célibataire', 'En couple', 'Marié(e)', 'Pacsé(e)', 'Divorcé(e)', 'Veuf / veuve']),
+    'emploi': ('Situation professionnelle', ['Salarié(e)', 'Entrepreneur / entrepreneuse', 'Indépendant(e)', 'Fonctionnaire', 'En recherche d’emploi', 'Étudiant(e)', 'Retraité(e)', 'Sans activité professionnelle', 'Autre']),
+    'enfants': ('Enfants', ['Sans enfant', 'Avec enfant(s)']),
+    'animaux': ('Animaux de compagnie', ['Sans animal', 'Avec animal / animaux']),
+    'logement': ('Logement', ['Propriétaire', 'Locataire', 'Hébergé(e)', 'Logement de fonction', 'Autre']),
+}
+NO_ANSWER = 'Je préfère ne pas répondre'
 
 
 class ProfileError(ValueError):
@@ -124,7 +135,7 @@ class ProfileStore:
         self.path = Path(path)
         try:
             self.path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-            # Create new files with private permissions before SQLite opens them.
+            # POSIX private permissions; Windows uses the directory's inherited ACLs.
             descriptor = os.open(self.path, os.O_CREAT | os.O_RDWR, 0o600)
             os.close(descriptor)
             self.path.chmod(0o600)
@@ -142,6 +153,12 @@ class ProfileStore:
                     updated_at TEXT NOT NULL
                 )
             """)
+            db.execute('''CREATE TABLE IF NOT EXISTS questionnaires (
+                user_id TEXT PRIMARY KEY, answers_json TEXT NOT NULL)''')
+            db.execute('''CREATE TABLE IF NOT EXISTS saved_items (
+                user_id TEXT NOT NULL, kind TEXT NOT NULL, item_id TEXT NOT NULL,
+                saved_at TEXT NOT NULL, payload TEXT NOT NULL,
+                PRIMARY KEY(user_id, kind, item_id))''')
 
     @contextmanager
     def _connect(self):
@@ -194,3 +211,63 @@ class ProfileStore:
         _validate_identity(identity)
         with self._connect() as db:
             db.execute("DELETE FROM profiles WHERE user_id=?", (identity.user_id,))
+            db.execute('DELETE FROM questionnaires WHERE user_id=?', (identity.user_id,))
+            db.execute('DELETE FROM saved_items WHERE user_id=?', (identity.user_id,))
+
+    def answers(self, identity: Identity) -> dict:
+        _validate_identity(identity)
+        with self._connect() as db:
+            row = db.execute('SELECT answers_json FROM questionnaires WHERE user_id=?', (identity.user_id,)).fetchone()
+        return json.loads(row[0]) if row else {}
+
+    def save_answers(self, identity: Identity, answers: dict) -> None:
+        _validate_identity(identity)
+        if not isinstance(answers, dict) or any(
+            key not in QUESTIONNAIRE or value not in [NO_ANSWER, *QUESTIONNAIRE[key][1]]
+            for key, value in answers.items()
+        ):
+            raise ProfileError('Réponses au questionnaire invalides.')
+        with self._connect() as db:
+            db.execute('INSERT OR REPLACE INTO questionnaires VALUES (?, ?)',
+                       (identity.user_id, json.dumps(answers, ensure_ascii=False)))
+
+    @staticmethod
+    def favorite_id(event: dict) -> str:
+        fields = {key: event.get(key) for key in ('id', 'provider', 'dossier_url', 'event_date', 'event', 'title', 'source_location')}
+        return hashlib.sha256(json.dumps(fields, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+
+    def save_item(self, identity: Identity, kind: str, payload: dict) -> str:
+        _validate_identity(identity)
+        if kind not in ('history', 'favorite') or not isinstance(payload, dict):
+            raise ProfileError('Enregistrement invalide.')
+        encoded = json.dumps(payload, ensure_ascii=False, allow_nan=False)
+        if len(encoded.encode('utf-8')) > 2_000_000:
+            raise ProfileError('Ce résultat est trop volumineux pour être enregistré.')
+        item_id = uuid4().hex if kind == 'history' else self.favorite_id(payload)
+        with self._connect() as db:
+            self._prune_history(db)
+            db.execute('INSERT OR IGNORE INTO saved_items VALUES (?, ?, ?, ?, ?)',
+                       (identity.user_id, kind, item_id, _now(), encoded))
+        return item_id
+
+    @staticmethod
+    def _prune_history(db):
+        # Expiration globale au prochain accès au stockage, sans tâche planifiée.
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+        db.execute("DELETE FROM saved_items WHERE kind='history' AND saved_at < ?", (cutoff,))
+
+    def items(self, identity: Identity, kind: str) -> list[dict]:
+        _validate_identity(identity)
+        if kind not in ('history', 'favorite'):
+            raise ProfileError('Collection invalide.')
+        with self._connect() as db:
+            self._prune_history(db)
+            rows = db.execute('SELECT * FROM saved_items WHERE user_id=? AND kind=? ORDER BY saved_at DESC, item_id',
+                              (identity.user_id, kind)).fetchall()
+        return [dict(id=row['item_id'], saved_at=row['saved_at'], data=json.loads(row['payload'])) for row in rows]
+
+    def remove_item(self, identity: Identity, kind: str, item_id: str) -> None:
+        _validate_identity(identity)
+        with self._connect() as db:
+            db.execute('DELETE FROM saved_items WHERE user_id=? AND kind=? AND item_id=?',
+                       (identity.user_id, kind, item_id))

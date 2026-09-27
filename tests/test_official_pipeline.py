@@ -55,6 +55,9 @@ def test_local_real_graph_reviews_then_writes_without_web(empty):
         captured.append(kwargs)
         self.calls += 1
         payload = {'needs_more': False, 'followup_query': None, 'limitations': []} if len(captured) == 1 else report()
+        if len(captured) > 1:
+            for item in payload['documents'] + payload['contacts']:
+                item['evidence'] = [dict(purpose=proof['purpose'], passage_id='p0001') for proof in item['evidence']]
         return SimpleNamespace(output_text=json.dumps(payload))
     with patch('backend.data_sources.official.prepare', return_value=prepared(empty)), \
          patch.object(Run, 'call', fake):
@@ -73,8 +76,9 @@ def test_local_refuses_invented_excerpt_in_known_url():
     invalid['documents'][0]['evidence'][0]['excerpt'] = 'Une citation inventÃ©e.'
     run = Run('Transports', '2026-01-01', '2026-12-31', source_urls={URL}, prepared=prepared())
     with patch.object(Run, 'call', AsyncMock(return_value=SimpleNamespace(output_text=json.dumps(invalid)))), \
-         pytest.raises(ResearchFailure, match='sources'):
+         pytest.raises(ResearchFailure, match='format') as caught:
         asyncio.run(run.finish())
+    assert caught.value.reason == 'invalid_evidence_selection'
 
 
 def test_unknown_source_mode_never_falls_back_to_paid_search(monkeypatch):
