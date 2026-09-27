@@ -1,17 +1,20 @@
-.env
-.env.*
+.env*
 !.env.example
-
-__pycache__/
-*.pyc
 .venv/
-venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+.DS_Store
+.streamlit/secrets.toml
+private/
+*.log
+results/
 
+# Règles supplémentaires du dépôt partagé.
+venv/
 node_modules/
 .next/
 dist/
-
-.DS_Store
 .vscode/
 .idea/
 

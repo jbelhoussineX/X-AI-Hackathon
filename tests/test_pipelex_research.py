@@ -40,7 +40,7 @@ def search_output(urls=None):
 
 class PipelexResearchTests(unittest.TestCase):
     def setUp(self):
-        self.env = patch.dict(os.environ, {'ENABLE_PIPELEX_CALLS': 'true'})
+        self.env = patch.dict(os.environ, {'ENABLE_PIPELEX_CALLS': 'true', 'POLITICAL_DATA_SOURCE': 'web', 'PIPELEX_EXECUTION_MODE': 'hosted'})
         self.env.start()
         self.addCleanup(self.env.stop)
         self.transport = httpx.MockTransport(lambda _: httpx.Response(
@@ -62,7 +62,7 @@ class PipelexResearchTests(unittest.TestCase):
         self.assertNotIn('INVENTED_', corpus)
         self.assertEqual(len(result.runs), 2)
         with patch('src.service.research', return_value=result):
-            output = search('Transports', '2026-01-01', '2026-12-31')
+            output = search('Transports', '2026-01-01', '2026-12-31', mode='pipelex')
         verifier_sortie(output, 'pipelex')
 
     def test_empty_search_skips_second_inference(self):
@@ -171,7 +171,7 @@ class PipelexResearchTests(unittest.TestCase):
         result.report['documents'].append(second)
         result.checks.append(dict(result.checks[0], entity_index=1))
         with patch('src.service.research', return_value=result):
-            output = search('Transports', '2026-01-01', '2026-12-31')
+            output = search('Transports', '2026-01-01', '2026-12-31', mode='pipelex')
         self.assertEqual(len(output['source_checks']), 1)
         self.assertEqual(output['source_checks'][0]['entity_index'], 0)
         self.assertEqual(output['report']['documents'][0]['id'], 'test2')

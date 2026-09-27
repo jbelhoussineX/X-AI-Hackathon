@@ -4,6 +4,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 import json
+import os
 from time import monotonic
 
 import httpx
@@ -14,7 +15,7 @@ from backend.generated.political_report.models import ReportRequest
 from backend.pipelex_search import find_sources
 from backend.pipelex_report import build_report
 from backend.report_contract import validate_report
-from backend.source_verification import FetchedSource, allowed_url, fetch_text, verify_sources
+from backend.source_verification import FetchedSource, allowed_url, fetch_text, verify_sources, normalize
 
 MAX_SOURCES = 6
 MAX_SOURCE_CHARS = 15_000
@@ -55,7 +56,7 @@ def collect_sources(search: SearchResult, *, transport=None) -> tuple[list, dict
                 limitations.append(f'Page non exploitable ({source.status}) : {url}')
                 continue
             budget = min(MAX_SOURCE_CHARS, remaining)
-            original = source.pages if source.pages is not None else [source.text]
+            original = source.pages if source.pages is not None else [normalize(source.text)]
             pages = []
             for page in original:
                 pages.append(page[:budget])
@@ -87,14 +88,25 @@ def research(topic: str, *, start: str, end: str, transport=None) -> ResearchRes
         raise ValueError('Période de publication invalide.')
     require_enabled('PIPELEX')
     topic = topic.strip()
-    search_run = asyncio.run(find_sources(SearchRequest(topic=topic, start=start, end=end)))
-    corpus, fetched, limitations = collect_sources(search_run.output, transport=transport)
+    runs: tuple = ()
+    source_mode = os.environ.get('POLITICAL_DATA_SOURCE', 'official')
+    if source_mode == 'official':
+        from backend.data_sources.official import prepare, fetched_corpus
+        prepared = prepare(topic, start, end, transport=transport)
+        corpus, limitations = prepared['corpus'], prepared['limitations']
+        fetched = fetched_corpus(corpus)
+    elif source_mode == 'web':
+        search_run = asyncio.run(find_sources(SearchRequest(topic=topic, start=start, end=end)))
+        corpus, fetched, limitations = collect_sources(search_run.output, transport=transport)
+        runs = (search_run.results,)
+    else:
+        raise ValueError('POLITICAL_DATA_SOURCE doit valoir official ou web.')
     report: dict
     if not corpus:
         report = {'schema_version': '1.0', 'topic': topic, 'scope': 'Aucune page officielle exploitable.',
                   'documents': [], 'contacts': [],
                   'limitations': [*limitations, 'Aucune conclusion documentaire possible ; aucun rapport généré.']}
-        return ResearchResult(report, [], (search_run.results,))
+        return ResearchResult(report, [], runs)
     report_run = asyncio.run(build_report(ReportRequest(
         topic=topic, start=start, end=end, corpus_json=json.dumps(corpus, ensure_ascii=False))))
     # Check raw output before generated models can discard unexpected fields.
@@ -113,4 +125,4 @@ def research(topic: str, *, start: str, end: str, transport=None) -> ResearchRes
     verification = verify_sources(report, fetched_sources=fetched)
     if verification.checks and not verification.all_matched:
         raise ValueError('Rapport refusé : une citation est absente du corpus effectivement lu.')
-    return ResearchResult(verification.report, verification.checks, (search_run.results, report_run.results))
+    return ResearchResult(verification.report, verification.checks, (*runs, report_run.results))

@@ -83,7 +83,7 @@ class SourceTests(unittest.TestCase):
         self.assertNotIn('do not expose', str(result.report))
 
     def test_invalid_research_report_is_not_replaced_with_demo(self):
-        with patch.dict(os.environ, {'ENABLE_PIPELEX_CALLS': 'true'}), \
+        with patch.dict(os.environ, {'ENABLE_PIPELEX_CALLS': 'true', 'PIPELEX_EXECUTION_MODE': 'hosted'}), \
              patch('src.service.research', side_effect=ValueError('Source non confirmee')):
             with self.assertRaises(ValueError):
-                search('Transports', '2026-01-01', '2026-12-31')
+                search('Transports', '2026-01-01', '2026-12-31', mode='pipelex')

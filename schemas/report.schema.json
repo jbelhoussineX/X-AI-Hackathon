@@ -1,0 +1,204 @@
+{
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": [
+        "1.0"
+      ]
+    },
+    "topic": {
+      "type": "string"
+    },
+    "scope": {
+      "type": "string"
+    },
+    "documents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "proposition_de_loi",
+              "projet_de_loi",
+              "declaration",
+              "programme"
+            ]
+          },
+          "publication_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "summary": {
+            "type": "string"
+          },
+          "stage": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "stage_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "purpose": {
+                  "type": "string",
+                  "enum": [
+                    "contenu",
+                    "statut",
+                    "relation",
+                    "contact"
+                  ]
+                },
+                "url": {
+                  "type": "string"
+                },
+                "excerpt": {
+                  "type": "string"
+                },
+                "location": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "purpose",
+                "url",
+                "excerpt",
+                "location"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "uncertainties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "kind",
+          "publication_date",
+          "summary",
+          "stage",
+          "stage_date",
+          "evidence",
+          "uncertainties"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "contacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "relation": {
+            "type": "string"
+          },
+          "document_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "contact_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "purpose": {
+                  "type": "string",
+                  "enum": [
+                    "contenu",
+                    "statut",
+                    "relation",
+                    "contact"
+                  ]
+                },
+                "url": {
+                  "type": "string"
+                },
+                "excerpt": {
+                  "type": "string"
+                },
+                "location": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "purpose",
+                "url",
+                "excerpt",
+                "location"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "name",
+          "role",
+          "relation",
+          "document_ids",
+          "contact_url",
+          "evidence"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "topic",
+    "scope",
+    "documents",
+    "contacts",
+    "limitations"
+  ],
+  "additionalProperties": false
+}

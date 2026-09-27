@@ -1,0 +1,11 @@
+Je suis B, responsable interface. Lis AGENTS.md, CONTRACT.md, app.py et fixtures/demo.json.
+Travaille uniquement sur app.py, éventuellement ui/, et des tests/test_ui*.py.
+Conserve src.service.search et sa signature. Aucun autre client API, aucun secret dans l'interface.
+Améliore l'interface Streamlit existante : recherche claire, cartes lisibles, publication, étape,
+sources, extraits, inconnues et interlocuteurs. Trie les documents par date et les contacts
+alphabétiquement ; aucun score politique. Préserve le marquage EXEMPLE FICTIF et le message
+« dernière recherche » lorsque le formulaire change. Ne produis aucun faux journal d'actions.
+Ne modifie pas requirements.txt sans accord de A. Pas de React, hébergement, compte utilisateur.
+La fixture reste fictive ; une erreur Dust ne déclenche jamais automatiquement cette fixture.
+Travaille sans appel IA réel. Lance les contrôles disponibles. Indique exactement ce qui a été
+testé et fournis-moi une liste de 5 manipulations pour vérifier visuellement le résultat.

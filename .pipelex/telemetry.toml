@@ -1,0 +1,97 @@
+####################################################################################################
+# Custom Telemetry Configuration (Project Override)
+####################################################################################################
+#
+# This file lives in your project's `.pipelex/` directory. Every setting below is
+# commented out on purpose: the project file is layered ON TOP of your global
+# `~/.pipelex/telemetry.toml` and `~/.pipelex/telemetry_override.toml`, so any
+# value you set here REPLACES the global one for this project.
+#
+# Leave it commented out to inherit your global telemetry settings unchanged.
+# Uncomment a key (or whole section) to override it for this project only.
+#
+# NOTE: When using Pipelex Gateway, identified telemetry is automatically enabled
+# (tied to your Gateway API key, hashed for security). This is independent of the
+# settings below — you can have both.
+#
+# To disable all telemetry, set the DO_NOT_TRACK=1 environment variable.
+#
+# Documentation: https://docs.pipelex.com
+# Support: https://go.pipelex.com/discord
+#
+####################################################################################################
+
+# ──────────────────────────────────────────────────────────────────────────────
+# PostHog Configuration (Event tracking + AI span tracing)
+# ──────────────────────────────────────────────────────────────────────────────
+
+# [custom_posthog]
+# mode = "off"                      # Values: "off" | "anonymous" | "identified"
+# user_id = "your_user_id"          # Required when mode = "identified"
+# endpoint = "${POSTHOG_ENDPOINT}"  # Default: https://us.i.posthog.com (or https://eu.i.posthog.com for EU)
+# api_key = "${POSTHOG_API_KEY}"    # Get from PostHog Project Settings
+# geoip = true                      # Enable GeoIP lookup
+# debug = false                     # Enable PostHog debug mode
+# redact_properties = [
+#   "prompt",
+#   "system_prompt",
+#   "response",
+#   "file_path",
+#   "url",
+# ]
+
+# AI span tracing to YOUR PostHog (does NOT affect Langfuse/OTLP - they receive full data)
+# [custom_posthog.tracing]
+# enabled = false                   # Send AI spans to your PostHog
+
+# Privacy controls for data sent to YOUR PostHog only
+# [custom_posthog.tracing.capture]
+# content = false                   # Capture prompt/completion content
+# content_max_length = 1000         # Max length for captured content (omit for unlimited)
+# pipe_codes = false                # Include pipe codes in span names/attributes
+# output_class_names = false        # Include output class names in span names/attributes
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Portkey SDK Configuration
+# ──────────────────────────────────────────────────────────────────────────────
+
+# [custom_portkey]
+# force_debug_enabled = false
+# force_tracing_enabled = false
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Langfuse Integration
+# Note: Langfuse receives FULL span data (no redaction)
+# ──────────────────────────────────────────────────────────────────────────────
+
+# [langfuse]
+# enabled = false
+# endpoint = "https://cloud.langfuse.com"     # Override for self-hosted Langfuse
+# public_key = "${LANGFUSE_PUBLIC_KEY}"
+# secret_key = "${LANGFUSE_SECRET_KEY}"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Additional OTLP Exporters (array for multiple)
+# Note: OTLP exporters receive FULL span data (no redaction)
+# ──────────────────────────────────────────────────────────────────────────────
+
+# [[otlp]]
+# name = "my-collector"
+# endpoint = "https://..."
+# headers = { Authorization = "Bearer ${OTLP_AUTH_TOKEN}" }
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Custom Telemetry Allowed Modes
+# Controls which integration modes can use custom telemetry settings above.
+# Defaults live in the Pydantic model (TelemetryConfig.telemetry_allowed_modes).
+# ──────────────────────────────────────────────────────────────────────────────
+
+# [telemetry_allowed_modes]
+# ci = false
+# cli = true
+# docker = true
+# fastapi = true
+# mcp = true
+# n8n = true
+# pytest = false
+# python = false

@@ -17,7 +17,7 @@ class FrontendContractTests(unittest.TestCase):
         return json.loads((ROOT / 'tests/fixtures/dust/report.json').read_text(encoding='utf-8'))
 
     def test_frontend_calls_real_service_with_mocked_pipelex(self):
-        with patch.dict(os.environ, {'ENABLE_PIPELEX_CALLS': 'true'}), patch('src.service.research', return_value=ResearchResult(self.report(), [])) as provider:
+        with patch.dict(os.environ, {'ENABLE_PIPELEX_CALLS': 'true', 'PIPELEX_EXECUTION_MODE': 'hosted'}), patch('src.service.research', return_value=ResearchResult(self.report(), [])) as provider:
             result = appeler_service_a({'topic': 'Transports', 'start': '2026-01-01', 'end': '2026-12-31'})
         self.assertEqual(verifier_sortie(result, 'pipelex')['mode'], 'pipelex')
         provider.assert_called_once_with('Transports', start='2026-01-01', end='2026-12-31')
@@ -25,8 +25,8 @@ class FrontendContractTests(unittest.TestCase):
     def test_outside_date_range_is_removed(self):
         report = self.report()
         report['documents'][0]['publication_date'] = '2025-12-31'
-        with patch.dict(os.environ, {'ENABLE_PIPELEX_CALLS': 'true'}), patch('src.service.research', return_value=ResearchResult(report, [])):
-            result = search('Transports', '2026-01-01', '2026-12-31')
+        with patch.dict(os.environ, {'ENABLE_PIPELEX_CALLS': 'true', 'PIPELEX_EXECUTION_MODE': 'hosted'}), patch('src.service.research', return_value=ResearchResult(report, [])):
+            result = search('Transports', '2026-01-01', '2026-12-31', mode='pipelex')
         self.assertEqual(result['report']['documents'], [])
         self.assertTrue(result['report']['limitations'])
         verifier_sortie(result, 'pipelex')

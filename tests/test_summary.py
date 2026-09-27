@@ -88,10 +88,10 @@ class SummaryTests(unittest.TestCase):
                 asyncio.run(summarize_interest(request))
 
     def test_service_uses_new_report_without_legacy_synthesis(self):
-        with patch.dict(os.environ, {'ENABLE_PIPELEX_CALLS': 'true'}), \
+        with patch.dict(os.environ, {'ENABLE_PIPELEX_CALLS': 'true', 'PIPELEX_EXECUTION_MODE': 'hosted'}), \
              patch('src.service.research', return_value=ResearchResult(self.report, [])), \
              patch('backend.pipelex_summary.analyze_summary') as analyzer:
-            result = search('Logement étudiant', '2026-01-01', '2026-12-31')
+            result = search('Logement étudiant', '2026-01-01', '2026-12-31', mode='pipelex')
         analyzer.assert_not_called()
         verifier_sortie(result, 'pipelex')
 
@@ -99,5 +99,5 @@ class SummaryTests(unittest.TestCase):
         with patch.dict(os.environ, {'ENABLE_PIPELEX_CALLS': 'false'}), \
              patch('src.service.research') as provider:
             with self.assertRaises(RuntimeError):
-                search('Logement étudiant', '2026-01-01', '2026-12-31')
+                search('Logement étudiant', '2026-01-01', '2026-12-31', mode='pipelex')
         provider.assert_not_called()

@@ -1,3 +1,28 @@
+# Collecte officielle : Sénat et Assemblée nationale
+
+La collecte est désormais appelée par défaut par les deux modes Pipelex
+(`POLITICAL_DATA_SOURCE=official`). Les sections Sénat ci-dessous décrivent
+les étapes précédentes et leurs tests, pas un branchement restant à faire.
+
+`official.py` réunit les deux institutions dans un corpus de 60 000 caractères.
+`assembly.py` lit l'archive JSON officielle de la 17e législature, sans extraction
+sur disque. Il conserve séparément dépôt, publication et mise en ligne.
+Les URL construites depuis les identifiants sont des candidates, jamais des preuves
+avant lecture réussie. Chaque version reste distincte. Trois notices par institution
+au maximum sont retenues par correspondance lexicale ; cela n'est pas une recherche exhaustive.
+
+Test réel du 27 septembre 2026 : sujet logement, 2025-01-01 à 2026-09-27,
+deux inventaires disponibles, six notices sélectionnées, dix pages dans le corpus,
+60 000 caractères. Deux textes sont tronqués et une page supplémentaire omise après
+atteinte de la limite. Sortie locale ignorée : `data/local/official-logement-integration-20260927.json`.
+Aucun appel IA ni validation juridique.
+
+Sources : [Assemblée](https://data.assemblee-nationale.fr/travaux-parlementaires/dossiers-legislatifs),
+[Sénat](https://data.senat.fr/dosleg/).
+Légifrance/PISTE nécessite encore des identifiants d'application ; aucun accès n'est simulé.
+
+## Historique et détails du collecteur Sénat
+
 # Ta partie : API et données officielles
 
 Tu fournis à l'agent des documents exploitables avec leur provenance. Ton livrable
@@ -117,11 +142,11 @@ reconstitue pas toute la navette parlementaire.
 1. Choisir deux ou trois thèmes pour la démonstration et vérifier les dossiers retrouvés.
 2. Contrôler les textes désormais collectés et étendre les formats de liens si
    des documents utiles ne sont pas reconnus. Relire les dispositions et leurs versions.
-3. Ajouter un adaptateur Assemblée nationale avec le même contrat de données.
+3. Relire les textes de l’Assemblée désormais collectés par le nouvel adaptateur.
 4. Pour Légifrance, configurer une application PISTE : API souscrite, CGU validées,
    identifiants OAuth côté serveur. Sandbox et production utilisent des accès distincts.
    Ne jamais envoyer le client secret dans Git ou dans une conversation.
-5. Avec le responsable de l'agent, raccorder les entrées, puis vérifier un résultat
+5. Avec le responsable de l'agent, vérifier un résultat
    complet : sujet → documents → résumé → citations.
 
 La détection périodique des nouveaux textes peut ensuite utiliser les
