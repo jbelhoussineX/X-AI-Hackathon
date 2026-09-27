@@ -3,17 +3,30 @@
 **Nouveau :** le bloc Actualités récentes inclut les débats parlementaires et les
 communiqués du Sénat, avec une synthèse Pipelex facultative des passages collectés.
 Voir [les sources, le fonctionnement et les limites](docs/ACTUALITES_RECENTES.md).
-Le rapport législatif historique ci-dessous conserve son contrat et son filtre de publication.
+L'accueil présente ce formulaire unique. Le rapport législatif historique reste
+disponible dans le code, avec son contrat et son filtre de publication.
+
+**Compte et profil :** la connexion Google est facultative. **Mon profil** permet
+d'enregistrer un nom d'affichage, jusqu'à huit sujets choisis et une période
+d'actualités préférée. Les profils sont séparés par l'identifiant Google stable
+et conservés dans `data/local/profiles.sqlite3` (ignoré par Git), sans jeton Google.
+La recherche reste disponible sans compte.
+Le bouton d'un sujet préremplit la recherche ; il ne lance aucun appel IA.
+
+L'activation nécessite un client OAuth Google de type **Application Web** et
+`.streamlit/secrets.toml`, préparé depuis l'exemple public. La connexion n'est pas
+active avant cette configuration. Voir [le guide Google et profil](docs/CONNEXION_GOOGLE.md).
+Pour la configuration locale fournie, ouvrir `http://localhost:8502` ; le retour
+Google doit être exactement `http://localhost:8502/oauth2callback`.
 
 Agent de recherche documentaire sur les politiques françaises, développé pour un
 hackathon de trois jours. L’utilisateur choisit un sujet et une période ; le
 programme recherche des textes parlementaires et présente un résumé, des preuves
 et des limites, sans recommander de choix politique.
 
-Le parcours actif utilise **Pipelex uniquement** : sujet → recherche de sources
-→ collecte Python des pages officielles → rapport Pipelex → contrôle des citations
-→ interface Streamlit existante. Aucune comparaison entre deux documents n’est
-nécessaire. Dust ne fait plus partie de ce parcours.
+Le parcours actif collecte les événements des sources officielles sans appel IA.
+Une synthèse **Pipelex** est proposée après la recherche, sur demande explicite.
+Dust ne fait plus partie de ce parcours.
 
 ## Démarrer
 
@@ -25,8 +38,13 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m streamlit run app.py --server.address 127.0.0.1
 ```
 
-Le mode **Démonstration** fonctionne sans clé ni réseau, avec des fiches fictives.
-Le mode **Recherche réelle · Pipelex** appelle
+Dans **Recherche**, saisir un sujet et une période, puis cliquer **Rechercher**.
+Le réglage **Sans synthèse** permet de consulter les sources officielles sans
+appel IA ; la collecte nécessite le réseau. **Avec synthèse** permet ensuite
+d'autoriser et de demander une synthèse Pipelex depuis les résultats.
+Le menu **Mon profil** donne accès aux préférences après connexion Google.
+
+Le formulaire historique, conservé dans le code mais absent de l'accueil, appelle
 `src.service.search(topic, start, end, mode='pipelex')` après clic et consentement.
 Par défaut, les inventaires officiels Sénat et Assemblée sont téléchargés sans IA,
 puis les pages pertinentes sont collectées. En mode hébergé, un appel de synthèse est demandé si le corpus n'est pas vide ;
@@ -78,6 +96,8 @@ Remove-Variable pipelexSecret
 ```text
 app.py                           Point d’entrée Streamlit
 frontend/interface_b.py          Interface de l’équipe
+frontend/profile.py              Connexion Google et page Mon profil
+backend/profiles.py              Préférences SQLite séparées par compte Google
 src/service.py                   Contrat du formulaire et filtre de dates
 backend/pipelex_research.py       Parcours hébergé et vérification
 backend/data_sources/            Inventaires et collecte officielle
@@ -95,8 +115,9 @@ tests/                           Tests locaux et réponses simulées
 
 `backend/dust/` et les méthodes historiques `political_summary` et
 `political_watch` restent disponibles pour référence et compatibilité des anciens
-outils ; le formulaire ne les appelle plus. Le stockage SQLite et la comparaison
-de versions restent des extensions hors du parcours principal.
+outils ; le formulaire ne les appelle plus. Le stockage des profils utilise SQLite ;
+la persistance des veilles et la comparaison de versions restent des extensions
+hors du parcours principal.
 
 ## Vérifier sans appel IA
 
@@ -153,8 +174,8 @@ Ces changements ne prouvent pas la résolution d’une erreur réseau de l’API
 
 ## Actualités récentes
 
-Dans Recherche, ouvrir « Actualités récentes · 7 ou 30 jours », saisir un sujet
-puis cliquer « Consulter les actualités officielles ». Ce bloc télécharge à chaque
+Dans **Recherche**, saisir un sujet, choisir une période en mois ou jours
+puis cliquer **Rechercher**. Ce formulaire télécharge à chaque
 clic les inventaires officiels, sans clé ni appel IA. Il sélectionne la date de
 l'événement, indépendamment de la date initiale du texte, et affiche source,
 localisation dans l'export et date de collecte. Les 20 événements les plus récents
@@ -166,8 +187,9 @@ complète les dépôts et promulgations ; il ne couvre pas toutes les étapes.
 Une réunion inscrite n'est pas une preuve de sa tenue. La mise à jour du producteur
 peut être décalée. Aucun statut de droit en vigueur n'est inféré.
 
-Ce bloc affiche directement les métadonnées officielles : il ne génère pas de résumé
-IA. Le rapport Pipelex existant reste séparé et conserve son filtre de publication.
+Les résultats affichent directement les métadonnées officielles, avec filtres par
+type d'événement et tri chronologique. La synthèse IA est facultative et séparée.
+Le rapport Pipelex historique conserve son filtre de publication.
 Contrôle réel du 27 septembre 2026 : logement, du 29 août au 27 septembre inclus,
 13 événements trouvés, deux inventaires accessibles. Aucun appel IA pendant ce contrôle.
 

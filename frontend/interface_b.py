@@ -57,6 +57,7 @@ STYLE = """
 [data-testid="stSidebar"] .stMarkdown p,
 [data-testid="stSidebar"] .stRadio label p,
 [data-testid="stSidebar"] .stCheckbox label p { color:#F5F5F5; }
+[data-testid="stSidebar"] [data-testid="stText"] { color:#F5F5F5; }
 [data-testid="stSidebar"] [data-testid="stCaptionContainer"] p { color:#CCCCCC; }
 [data-testid="stSidebar"] hr { border-color:#444444; }
 [data-testid="stSidebar"] [data-testid="stRadio"] label { padding:.35rem 0; }
@@ -655,23 +656,29 @@ def page_aide() -> None:
         st.subheader("Comment obtenir une synthèse ?")
         st.write("Choisissez « Avec synthèse » dans le menu, puis autorisez et lancez la synthèse depuis les résultats. Cette action utilise des crédits du fournisseur. Aucun appel IA n’est lancé automatiquement.")
         st.caption("Les résultats restent dans la session. Exportez-les pour les conserver. La recherche s’actualise à votre demande ; aucune surveillance automatique n’est active.")
+        st.subheader("Comment retrouver mes sujets ?")
+        st.write("La connexion Google est facultative. Dans Mon profil, enregistre tes sujets et ta période préférée. Choisir un sujet prépare le formulaire ; clique ensuite sur Rechercher pour consulter les actualités.")
         st.caption("La collecte officielle parcourt les inventaires du Sénat et de l’Assemblée, puis transmet un corpus limité au modèle. Les dates, les résumés et les versions doivent être relus.")
     with st.expander("Comprendre les sources et les dates"):
         st.write("La période filtre les événements datés : étapes législatives, publications, amendements et débats. Un texte ancien peut avoir une évolution récente. La date d’une séance ou d’une étape est distincte de la date de publication. La collecte est partielle : consultez la couverture et les limites sous les résultats.")
         st.write("Une source citée n'est pas automatiquement une source vérifiée. L'étape de procédure, le résumé et le contact peuvent avoir des preuves différentes.")
         st.write("La date d'exécution indique quand la requête s'est terminée. Elle ne prouve pas que chaque page a été revérifiée indépendamment.")
     with st.expander("Données et confidentialité"):
-        st.write("L'historique et les veilles restent dans cette session. En mode réel, le sujet et les sources sont transmis au fournisseur configuré (Pipelex hébergé ou OpenAI avec Pipelex local). Aucun profil politique n'est construit.")
+        st.write("Les résultats restent dans cette session. Si tu demandes une synthèse IA, le sujet et les sources sont transmis au fournisseur configuré (Pipelex hébergé ou OpenAI avec Pipelex local). Aucun profil politique n'est construit.")
+        st.write("Avec Google, Mon profil conserve localement ton nom d’affichage, ton adresse vérifiée, tes sujets choisis et ta période préférée. Tu peux modifier, exporter ou supprimer ce profil. Ton identité Google n'est pas jointe aux recherches IA.")
         st.write("Les exports restent sous ton contrôle. Ne saisis pas d'informations sensibles. Aucune clé API ne doit être saisie dans cette interface.")
     with st.expander("Effacer les données de cette session"):
-        st.write("Cela efface l'historique, les résultats et les veilles ici, pas les conversations chez un fournisseur ni les fichiers exportés.")
+        st.write("Cela efface les résultats, synthèses et anciens éléments de session ici. Ton profil enregistré, les fichiers exportés et les données chez un fournisseur sont conservés.")
         if st.button("Confirmer l'effacement de la session", key="b_clear_session"):
             st.session_state["b_last"] = None
             st.session_state["b_history"] = []
             st.session_state["b_watches"] = []
             st.session_state["b_error"] = None
-            # Ne pas réinitialiser le compteur d'appels ni le consentement pour contourner le frein.
-            st.success("Résultats, historique et veilles de session effacés.")
+            for key in ("recent_result", "recent_brief", "recent_brief_error",
+                        "recent_categories", "recent_order", "recent_consent"):
+                st.session_state.pop(key, None)
+            # Conserver le compteur d'appels : effacer la session n'est pas un nouveau budget.
+            st.success("Résultats, synthèses et anciens éléments de session effacés.")
 
 
 # 11. POINT D'ENTRÉE : l'écran choisi, jamais une recherche automatique.
@@ -680,13 +687,17 @@ def main() -> None:
         raise SystemExit("Streamlit manque. Installe requirements-ui.txt, puis lance : python -m streamlit run interface_b.py")
     st.set_page_config(page_title=NOM_APPLICATION, page_icon="📑", layout="wide", initial_sidebar_state="expanded")
     st.markdown(STYLE, unsafe_allow_html=True)
+    from frontend.profile import initialize_identity, sidebar_account, render_profile
+    identity, identity_error = initialize_identity()
     initialiser_etat(st.session_state)
-    if st.session_state["b_page"] not in ("Recherche", "Aide"):
+    if st.session_state["b_page"] not in ("Recherche", "Mon profil", "Aide"):
         st.session_state["b_page"] = "Recherche"
     with st.sidebar:
         st.markdown('<div class="brand">sed <em>lex.</em></div>', unsafe_allow_html=True)
         st.divider()
-        st.radio("Navigation", ["Recherche", "Aide"], key="b_page", label_visibility="collapsed")
+        sidebar_account(identity, identity_error)
+        st.divider()
+        st.radio("Navigation", ["Recherche", "Mon profil", "Aide"], key="b_page", label_visibility="collapsed")
         st.divider()
         st.radio("Synthèse IA", ["demo", "pipelex"], key="b_mode",
                  format_func=lambda x: "Sans synthèse" if x == "demo" else "Avec synthèse")
@@ -700,6 +711,8 @@ def main() -> None:
     page = st.session_state["b_page"]
     if page == "Recherche":
         page_recherche(mode)
+    elif page == "Mon profil":
+        render_profile(identity, identity_error)
     else:
         page_aide()
     st.caption("Sed Lex · Sources officielles · Recherche à la demande")
