@@ -137,3 +137,11 @@ Pipelex local avec réponses OpenAI simulées et l'interface Streamlit.
 générés sont à jour. Mypy passe sur les huit fichiers ciblés du service et des données.
 Le SDK Pipelex 0.13.0 et le moteur 0.67.0 partagent la dépendance MTHDS 0.16.0.
 Les appels payants du parcours fusionné n'ont pas été testés.
+
+## Correctif équipe intégré
+
+Le commit `4eb20af` de main améliore le parcours local OpenAI : recherche web,
+validation des rapports, gestion des compléments tronqués et diagnostics expurgés.
+Voir [le branchement](docs/BRANCHEMENT_STREAMLIT.md) et
+[la revue des sources](docs/REVUE_SOURCES_OFFICIELLES.md).
+Ces changements ne prouvent pas la résolution d’une erreur réseau de l’API hébergée.

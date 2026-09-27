@@ -5,7 +5,7 @@ from pipelex.core.memory.working_memory import WorkingMemory
 from pipelex.core.stuffs.text_content import TextContent
 from pipelex.system.registries.func_registry import pipe_func, func_registry
 
-from src.openai_research import Run
+from src.openai_research import Run, ResearchFailure
 
 _run: Run | None = None
 
@@ -37,7 +37,21 @@ async def assess_gaps(working_memory: WorkingMemory) -> TextContent:
 async def complete_sources(working_memory: WorkingMemory) -> TextContent:
     review = json.loads(working_memory.get_stuff_as_text('assessment').text)
     if review['needs_more']:
-        await current().research(review['followup_query'])
+        run = current()
+        try:
+            await run.research(review['followup_query'])
+        except ResearchFailure as exc:
+            # Only an optional, token-truncated supplement may be discarded.
+            # research() appends notes/sources only after a completed response.
+            if (exc.code != 'format' or exc.reason != 'max_output_tokens'
+                    or not run.notes or not run.source_urls):
+                raise
+            run.limitations.append(
+                'La recherche complémentaire a été interrompue à la limite de tokens. '
+                'Son contenu partiel est écarté, sans nouvel essai. Ce rapport repose '
+                'uniquement sur la recherche initiale ; les informations manquantes '
+                'identifiées n’ont pas pu être complétées.'
+            )
     return TextContent(text=current().corpus())
 
 

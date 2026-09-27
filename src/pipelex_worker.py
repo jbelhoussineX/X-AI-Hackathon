@@ -48,13 +48,23 @@ async def execute(request: dict) -> dict:
         Pipelex.teardown_if_needed()
 
 
-def error_code(exc: BaseException) -> str:
-    from src.openai_research import ResearchFailure
+def exception_chain(exc: BaseException):
     visited: set[int] = set()
     while exc is not None and id(exc) not in visited:
         visited.add(id(exc))
+        yield exc
+        exc = exc.__cause__ or exc.__context__
+
+
+def error_code(exc: BaseException) -> str:
+    from src.openai_research import ResearchFailure
+    from src.contracts import ReportError
+    fallback = 'provider'
+    for exc in exception_chain(exc):
         if isinstance(exc, ResearchFailure):
             return exc.code
+        if isinstance(exc, ReportError):
+            return 'format'
         name = type(exc).__name__
         if name in ('AuthenticationError', 'PermissionDeniedError', 'InferenceBackendCredentialsError'):
             return 'credentials'
@@ -64,8 +74,37 @@ def error_code(exc: BaseException) -> str:
             return 'timeout'
         if name == 'APIConnectionError':
             return 'network'
-        exc = exc.__cause__ or exc.__context__
-    return 'provider'
+        if name in ('BadRequestError', 'UnprocessableEntityError'):
+            return 'request'
+        if name == 'NotFoundError':
+            return 'model'
+        if name == 'InternalServerError':
+            return 'server'
+        if name in ('PipelexSetupError', 'ConfigValidationError', 'ValidateBundleError'):
+            # A setup wrapper may contain the more precise missing-key error below.
+            fallback = 'configuration'
+            continue
+        if name in ('TypeError', 'KeyError', 'AttributeError', 'ValueError'):
+            return 'internal'
+    return fallback
+
+
+def error_diagnostic(exc: BaseException) -> dict:
+    from src.pipelex_client import safe_diagnostic
+    details = {}
+    for cause in exception_chain(exc):
+        candidate = {
+            'stage': getattr(cause, 'pipe_code', None),
+            'http_status': getattr(cause, 'status_code', None),
+            'type': type(cause).__name__,
+            'code': getattr(cause, 'code', None),
+            'param': getattr(cause, 'param', None),
+            'reason': getattr(cause, 'reason', None),
+            'field': getattr(cause, 'field', None),
+        }
+        for key, value in safe_diagnostic(candidate).items():
+            details.setdefault(key, value)
+    return details
 
 
 def main() -> int:
@@ -77,7 +116,7 @@ def main() -> int:
             report = asyncio.run(execute(request))
             payload = {'ok': True, 'report': report}
         except Exception as exc:
-            payload = {'ok': False, 'error': error_code(exc)}
+            payload = {'ok': False, 'error': error_code(exc), 'diagnostic': error_diagnostic(exc)}
     print(json.dumps(payload, ensure_ascii=False))
     return 0 if payload['ok'] else 1
 
